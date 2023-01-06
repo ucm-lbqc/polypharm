@@ -227,3 +227,51 @@ if __name__ == "__main__":
     main(sys.argv[1:])
     """
         )
+
+
+def write_props_reader():
+    with open("props_reader.py", "w") as f:
+        f.write(
+            """from __future__ import print_function
+
+import argparse
+import os
+import sys
+import glob
+from schrodinger.structure import StructureReader
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("path", help="Path to the (*.mae[gz]) files")
+    parser.add_argument("-o", "--output", help="Output name.")
+    opts = parser.parse_args(argv)
+    return vars(opts), opts.path
+
+def main(argv):
+    opts, path = parse_args(argv)
+    maefiles = sorted(glob.glob(os.path.join(path, "*.mae")))
+    count = 0
+    filename = "%s.csv" % opts["output"]
+    data = open(filename, "w+")
+    data.write("{},{},{}".format("NAME", "IFDSCORE", "DGBIND"))
+    data.write("\\n")
+    print("reading properties")
+    for maefile in maefiles:
+        reader = StructureReader(maefile)
+        for st in reader:
+            name_property = st.property.get("s_m_name")
+            print(name_property)
+            ifdscore = st.property["r_psp_IFDScore"]
+            dg_bind = st.property["r_psp_MMGBSA_dG_Bind"]
+            count += 1
+            data1 = f"{name_property},{ifdscore},{dg_bind}"
+            data.write(data1)
+            data.write("\\n")
+    data.close()
+    reader.close()
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
+    """
+        )
+
