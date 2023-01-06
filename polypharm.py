@@ -7,6 +7,98 @@ import shutil
 from typing import Tuple
 
 pd.options.display.max_rows = 100
+
+def reading_raw_data(
+    mmgbsa_file: str,
+    interactions_file: str,
+    residues: list,
+    to_filter: str,
+    order: str = "INT_NORM-NORMT",
+) -> pd.DataFrame:
+    print("Reading data...")
+    protein_name = os.path.basename(f"{mmgbsa_file}")
+    protein_name = protein_name.replace('_mmgbsa.csv', '')
+    residues = residues[f'{protein_name}.mae'].split(",")
+    residues.append("NAME")
+    df_mmgbsa = pd.read_csv(f"{mmgbsa_file}")
+    print("MMGBSA data rows:", df_mmgbsa.shape[0])
+    df_interactions = pd.read_csv(f"{interactions_file}")
+    print("Interactions data rows:", df_interactions.shape[0])
+    df_interactions.rename(columns=str.upper, inplace=True)
+
+    # Erase columns that are not part of the binding-site residues
+    for column in df_interactions:
+        if column not in residues:
+            df_interactions.drop([f"{column}"], axis=1, inplace=True)
+
+    df = pd.merge(df_mmgbsa, df_interactions, left_on="NAME", right_on="NAME")
+    print("Total rows (merged):", df.shape[0])
+    check_rows(df_interactions.shape[0], df_mmgbsa.shape[0], df.shape[0])
+
+    # Filter the poses with the option=to_filter.
+    if to_filter != "":
+        print("to_Filtering...")
+        df = df[df["NAME"].str.contains(to_filter) == False]
+
+    df["INT"] = df.iloc[:, 3:].sum(axis=1)
+    df = df.sort_values(by=["INT"], ascending=False)
+    # Interactions and energy normalization
+    best_dgbind = df.DGBIND.min()
+    worst_dgbind = df.DGBIND.max()
+    worst_int = df.INT.min()
+    best_int = df.INT.max()
+    print(f"Better dGbind: {df.DGBIND.min()}")
+    print(f"Worst dGbind: {df.DGBIND.max()}")
+    print(f"Better interactions number: {best_int}")
+    print(f"Worst interactions number: {worst_int}")
+
+    df["INT_NORM"] = df.apply(
+        lambda row: (row.INT - worst_int) / (best_int - worst_int), axis=1
+    )
+    if worst_dgbind < 0 and best_dgbind < 0:
+        worst_dgbind = abs(worst_dgbind)
+        best_dgbind = abs(best_dgbind)
+        df["DGBIND_NORM"] = df.apply(
+            lambda row: (abs(row.DGBIND) - worst_dgbind) / (best_dgbind - worst_dgbind),
+            axis=1,
+        )
+
+    elif best_dgbind < 0 and worst_dgbind > 0:
+        worst_dgbind = worst_dgbind
+        best_dgbind = abs(best_dgbind)
+        df["DGBIND_NORM"] = df.apply(
+            lambda row: (abs(row.DGBIND) - worst_dgbind) / (best_dgbind - worst_dgbind),
+            axis=1,
+        )
+
+    elif best_dgbind >= 0 and worst_dgbind > 0:
+        worst_dgbind = worst_dgbind
+        best_dgbind = best_dgbind
+        df["DGBIND_NORM"] = df.apply(
+            lambda row: (
+                ((row.DGBIND) - best_dgbind) / (best_dgbind - worst_dgbind) * -1 + 1
+            ),
+            axis=1,
+        )
+
+    df["NORMT"] = df.apply(lambda row: row.INT_NORM + row.DGBIND_NORM, axis=1)
+
+    if order == "INT-NORMT":
+        df = df.sort_values(by=["INT", "NORMT"], ascending=False)
+    if order == "INT_NORM-NORMT":
+        df = df.sort_values(by=["INT_NORM", "NORMT"], ascending=False)
+    if order == "DGBIND_NORM":
+        df = df.sort_values(by=["DGBIND_NORM"], ascending=True)
+    if order == "DGBIND":
+        df = df.sort_values(by=["DGBIND"], ascending=True)
+    if order == "INT-DGBIND_NORM":
+        df = df.sort_values(by=["INT", "DGBIND_NORM"], ascending=True)
+
+    # Replace -out-out by _out_out to ignore the "-out-out" words produced by the ifd and MMGBSA output
+    # df["NAME"] = df["NAME"].str.replace("-out", "*out")
+    df.reset_index(drop=True, inplace=True)
+    return df
+
 def run_silent(command: str, basename: str):
     with open(os.devnull, "w") as FNULL:
         try:
