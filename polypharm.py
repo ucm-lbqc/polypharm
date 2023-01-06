@@ -139,6 +139,66 @@ def reading_raw_data(
     df.reset_index(drop=True, inplace=True)
     return df
 
+
+def ranking_compounds_old(
+   common_compounds, df_task1_rank, df_nav_rank, df_kv_cc_rank, df_kv_sp_rank, order
+):
+    new_df = pd.DataFrame()
+    for c in common_compounds:
+        task1_row = df_task1_rank.loc[df_task1_rank["NAME"].str.contains(f"{c}-out")]
+        nav_row = df_nav_rank.loc[df_nav_rank["NAME"].str.contains(f"{c}-out")]
+        kv_cc_row = df_kv_cc_rank.loc[df_kv_cc_rank["NAME"].str.contains(f"{c}-out")]
+        kv_sp_row = df_kv_sp_rank.loc[df_kv_sp_rank["NAME"].str.contains(f"{c}-out")]
+        new_rank = (
+            task1_row.RANK.iloc[0]
+            + nav_row.RANK.iloc[0]
+            + kv_cc_row.RANK.iloc[0]
+            + kv_sp_row.RANK.iloc[0]
+        )
+        new_norm_total = (
+            task1_row.NORMT.iloc[0]
+            + nav_row.NORMT.iloc[0]
+            + kv_cc_row.NORMT.iloc[0]
+            + kv_sp_row.NORMT.iloc[0]
+        )
+        task1_normt = task1_row.NORMT.iloc[0]
+        nav_normt = nav_row.NORMT.iloc[0]
+        kv_cc_normt = kv_cc_row.NORMT.iloc[0]
+        kv_sp_normt = kv_sp_row.NORMT.iloc[0]
+        task1_dgbind = task1_row.DGBIND.iloc[0]
+        nav_dgbind = nav_row.DGBIND.iloc[0]
+        kv_cc_dgbind = kv_cc_row.DGBIND.iloc[0]
+        kv_sp_dgbind = kv_sp_row.DGBIND.iloc[0]
+        task1_int = task1_row.INT.iloc[0]
+        nav_int = nav_row.INT.iloc[0]
+        kv_cc_int = kv_cc_row.INT.iloc[0]
+        kv_sp_int = kv_sp_row.INT.iloc[0]
+        new_row = {
+            "NAME": c,
+            "TASK1_INT": task1_int,
+            "NAV_INT": nav_int,
+            "KV_CC_INT": kv_cc_int,
+            "KV_SP_INT": kv_sp_int,
+            "TASK1_DGBIND": task1_dgbind,
+            "NAV_DGBIND": nav_dgbind,
+            "KV_CC_DGBIND": kv_cc_dgbind,
+            "KV_SP_DGBIND": kv_sp_dgbind,
+            "TASK1_NORMT": task1_normt,
+            "NAV_NORMT": nav_normt,
+            "KV_CC_NORMT": kv_cc_normt,
+            "KV_SP_NORMT": kv_sp_normt,
+            "SUM_NORMT": new_norm_total,
+            "SUM_RANK": new_rank,
+        }
+        new_row = pd.DataFrame(new_row, index=[0])
+        new_df = pd.concat([new_df, new_row], ignore_index=True)
+        if order == "SUM_NORM_TOTAL":
+            new_df = new_df.sort_values(by=["SUM_NORM_TOTAL"], ascending=False)
+        if order == "SUM_RANK":
+            new_df = new_df.sort_values(by=["SUM_RANK"], ascending=True)
+    new_df.reset_index(drop=True, inplace=True)
+    return new_df
+
 def run_silent(command: str, basename: str):
     with open(os.devnull, "w") as FNULL:
         try:
