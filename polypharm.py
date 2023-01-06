@@ -14,6 +14,40 @@ def check_rows(length1, length2, length3):
     if n_rows == False:
         print("Warning: Number of rows in dataframes is not the same")
 
+
+def ranking_poses(df: pd.DataFrame, max_rank: int) -> Tuple[pd.DataFrame, set]:
+    df_rank = pd.DataFrame()
+    compound_set = set()
+    n = 0
+    for i in range(len(df)):
+        compound = df.loc[i, "NAME"].split("-out")[0]
+        if len(compound_set) == max_rank:
+            break
+        if compound not in compound_set:
+            n += 1
+            compound_set.add(compound)
+            name = df.loc[i, "NAME"]
+            int = df.loc[i, "INT"]
+            int_norm = df.loc[i, "INT_NORM"]
+            norm_dgbind = df.loc[i, "DGBIND_NORM"]
+            dgbind = df.loc[i, "DGBIND"]
+            norm_total = df.loc[i, "NORMT"]
+            new_row = {
+                "NAME": name,
+                "DGBIND": dgbind,
+                "INT": int,
+                "DGBIND_NORM": norm_dgbind,
+                "INT_NORM": int_norm,
+                "NORMT": norm_total,
+                "RANK": n,
+            }
+            new_row = pd.DataFrame(new_row, index=[0])
+            df_rank = pd.concat([df_rank, new_row], ignore_index=True)
+            df_rank.index = df_rank.index + 1
+            df_rank.index.name = "POSITION"
+    return df_rank, compound_set
+
+
 def reading_raw_data(
     mmgbsa_file: str,
     interactions_file: str,
