@@ -36,7 +36,7 @@ Default values: $SCHRODINGER
 
 * ``LIGANDS_PATH``: < Specify the path to the ligand files >   
 Acceptable values: any path  
-**NOTE: The ligands must be in .maegz format**
+**NOTE: The ligands must be in .maegz format. We suggest using ligand names as simple as possible, for example: 1a, 1b, 5f, etc. Do not use the word "-out" in ligand names.**
 
 * ``PROTEINS_PATH``: < Specify the path to the target files >   
 Acceptable values: any path  
