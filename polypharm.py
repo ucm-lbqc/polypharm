@@ -126,3 +126,43 @@ def run_ifd(
                 f"Running IFD for ligand {ligand_basename} in {protein_name} ({lig_id}/{n_ligands})..."
             )
             run_silent(ifd_calculation, ligand_basename)
+
+
+def run_mmgbsa(
+    working_folder: str,
+    schrodinger_path: str,
+    ifd_output_path: str,
+    output_folder_name: str,
+    mmgbsa_cpu=2,
+):
+    os.chdir(working_folder)
+    schrod_path = os.path.abspath(schrodinger_path)
+    mmgbsa_exec = f"{schrod_path}/prime_mmgbsa"
+    Path(f"{output_folder_name}").mkdir(parents=True, exist_ok=True)
+    ifd_output_path = os.path.abspath(ifd_output_path)
+    proteins = glob.glob(f"{ifd_output_path}/**")
+    UNK = "'UNK '"
+
+    for protein in proteins:
+        os.chdir(f"{working_folder}/{output_folder_name}")
+        protein_name = os.path.basename(f"{protein}")
+        print(f"Protein: {protein_name}")
+        Path(f"{protein_name}").mkdir(parents=True, exist_ok=True)
+        os.chdir(f"{working_folder}/{output_folder_name}/{protein_name}")
+        ligands = glob.glob(f"{protein}/**/*-out.maegz")
+        n_ligands = len(ligands)
+        lig_id = 0
+        for ligand in ligands:
+            lig_id += 1
+            ligand_name = os.path.basename(f"{ligand}")
+            ligand_basename = os.path.splitext(ligand_name)[0]
+            if os.path.exists(f"{ligand_basename}-out.maegz"):
+                print(f"{ligand_basename} already exists. Skipping ligand...")
+                continue
+
+            mmgbsa_calculation = f'{mmgbsa_exec} -HOST "localhost:{mmgbsa_cpu}" "{ligand}" -j {ligand_basename} -ligand "(res.pt  {UNK})" -csv_output yes -out_type COMPLEX -job_type REAL_MIN -WAIT > /dev/null 2>&1'
+            print(
+                f"Running MMGBSA for ligand {ligand_basename} in {protein_name} ({lig_id}/{n_ligands})..."
+            )
+            run_silent(mmgbsa_calculation, ligand_basename)
+
