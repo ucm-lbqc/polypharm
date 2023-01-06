@@ -8,6 +8,12 @@ from typing import Tuple
 
 pd.options.display.max_rows = 100
 
+
+def check_rows(length1, length2, length3):
+    n_rows = (length1) == (length2) == (length3)
+    if n_rows == False:
+        print("Warning: Number of rows in dataframes is not the same")
+
 def reading_raw_data(
     mmgbsa_file: str,
     interactions_file: str,
