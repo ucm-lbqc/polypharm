@@ -72,7 +72,7 @@ Acceptable values:
 ``INT-DGBIND_NORM``: Perform the ranking considering the number of interactios directly as a first criterion and the binding free energy normalization as the second criterion.
 Default values: ``INT_NORM-NORMT`` 
 
-**NOTE: The criterion used in the original work was: ``INT_NORM-NORMT``. The other options are experimental and have not been fully tested.** 
+**NOTE: The ``SCHEME_ORDER`` used in the original work was: ``INT_NORM-NORMT``. The other options are experimental and have not been fully tested.** 
 
 ## License
 
