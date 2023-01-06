@@ -166,3 +166,64 @@ def run_mmgbsa(
             )
             run_silent(mmgbsa_calculation, ligand_basename)
 
+
+def write_extractor():
+    with open("extractor.py", "w") as f:
+        f.write(
+            """from __future__ import print_function
+import argparse
+import os
+import sys
+import glob
+from schrodinger.structure import StructureReader, StructureWriter
+from schrodinger.utils.fileutils import get_jobname
+from schrodinger.structutils.analyze import evaluate_asl
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("path", help="Path to the (*.mae[gz]) files")
+    parser.add_argument("-o", "--output", help="Output name for structures.")
+    parser.add_argument(
+        "-asl",
+        dest="asl_expr",
+        required=False,
+        help="Only atoms selected by the given ASL expression will " "be extracted.",
+    )
+    opts = parser.parse_args(argv)
+    return vars(opts), opts.path
+def main(argv):
+    opts, path = parse_args(argv)
+    maefiles = sorted(glob.glob(os.path.join(path, "*.maegz")))
+    endname = "%s" % opts["output"]
+    for maefile in maefiles:
+        output_name = get_jobname(maefile)
+        reader = StructureReader(maefile)
+        count = 0
+        for st in reader:
+            count += 1
+            st_number = str(count)
+            output_name2 = "{}_{}".format(output_name, st_number)
+            data1 = "{:<20}".format(output_name2)
+            # Adding property
+            name_property = st.property.get("s_m_name")
+            if name_property is not None:
+                pass
+            else:
+                st.property["s_m_name"] = output_name2
+            print(data1)
+            # Writing ligands
+            if opts["asl_expr"] is not None:
+                indices1 = evaluate_asl(st, "(%s)" % opts["asl_expr"])
+                st1 = st.extract(indices1, copy_props=True)
+                st1.title = str(output_name2)
+                writer = StructureWriter(output_name2 + ".mae")
+                writer.append(st1)
+                writer.close()
+            else:
+                pass
+        reader.close()
+        writer.close()
+if __name__ == "__main__":
+    main(sys.argv[1:])
+    """
+        )
