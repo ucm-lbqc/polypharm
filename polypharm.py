@@ -275,3 +275,80 @@ if __name__ == "__main__":
     """
         )
 
+
+def write_vmd_script(bs_residues: dict, protein_name: str, radius: float):
+    jump = "\n"
+    resids_string = bs_residues[protein_name]
+    numbers = set()
+    chains = set()
+    resids_string = resids_string.split(",")
+    for pair in resids_string:
+        chains.add(pair.split(":")[0])
+        numbers.add(pair.split(":")[1])
+
+    chains = sorted(chains)
+    numbers = sorted(numbers)
+    resids = ""
+    for x in numbers:
+        resids += " " + str(x)
+    resids_number = resids
+    resids_number = f"{ { resids_number } }"
+    resids_number = resids_number.replace("'", "")
+
+    chs = ""
+    for x in chains:
+        chs += " " + '"' + x + '"'
+    chains = chs
+    chains = f"{ { chains } }"
+    chains = chains.replace("'", "")
+
+    with open("interactions.tcl", "w+") as f:
+        f.write(
+            """set folder [lindex $argv 0]
+set output [lindex $argv 1]
+set pdbfiles [glob $folder/*.mae]
+set ligand "UNK"
+"""
+        )
+        f.write(f"set resids {resids_number} {jump}")
+        f.write(f"set radius {radius} {jump}")
+        f.write(f"set chains {chains} {jump}")
+        f.write(
+            """
+set outfile [open ${output}_interactions.csv w]
+
+puts -nonewline $outfile "Name"
+foreach resid $resids {
+    foreach chain $chains {
+        puts -nonewline $outfile ",$chain:$resid"
+    }
+}
+puts $outfile ""
+
+
+foreach file $pdbfiles {
+    set basename [file rootname [file tail $file]]
+    puts -nonewline $outfile $basename
+    mol new $file
+    foreach resid $resids {
+        foreach chain $chains {
+            set sel [atomselect top "same residue as (resid $resids and chain $chain and within $radius of resname $ligand)"]
+            set current_resids [lsort -unique [$sel get resid]]
+            if {[lsearch $current_resids $resid] > -1} {
+                # lset mat $i [expr $j*[llength $chains]+$offset] 1
+                puts -nonewline $outfile ",1"
+            } else {
+                puts -nonewline $outfile ",0"
+            }
+        }
+    }
+    puts $outfile ""
+    mol delete top
+}
+
+close $outfile
+
+exit
+    """
+        )
+
