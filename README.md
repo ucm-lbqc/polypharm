@@ -68,9 +68,18 @@ Default values: 100
 * ``SCHEME_ORDER``: < Specify the name of the scheme to perform the ranking of the compounds.. >   
 Acceptable values: 
 ``INT_NORM-NORMT``:  Perform the ranking considering the normalization of interactions as the first criterion and the total normalization as the second criterion. This scheme gives more weight to the relevant interactions for each target and the binding free energy is considered as the second weight as it is implicit in the total normalization "NORMT". "NORMT" = normalized interactions + normalized binding free energy.
+``DGBIND_NORM``: Perform the ranking considering only the normalization of the binding free energy. This option could be useful when choosing targets for which the relevant residues of the binding site are unknown.
+``INT-DGBIND_NORM``: Perform the ranking considering the number of interactios directly as a first criterion and the binding free energy normalization as the second criterion.
+Default values: ``INT_NORM-NORMT`` 
 
-``DGBIND_NORM``: Perform the ranking considering only the normalization of the binding free energy. This option could be useful when choosing targets for which the relevant residues of the binding site are unknown. 
+**NOTE: The criterion used in the original work was: ``INT_NORM-NORMT``. The other options are experimental and have not been fully tested.** 
+
+## License
+
+Licensed under the MIT license, see the separate LICENSE file.
+
+## Citing
+* 
 
 
-Default values:  ``INT_NORM-NORMT``
 
