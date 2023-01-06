@@ -352,3 +352,65 @@ exit
     """
         )
 
+
+def analysis(
+    working_folder: str,
+    schrodinger_path: str,
+    mmgbsa_output_path: str,
+    bs_residues: str,
+    radius: float,
+    output_folder_name: str,
+    extract_poses: bool= True,
+    extract_mmgbsa_info: bool= True,
+    calculate_interactions: bool=True,
+):
+    write_extractor()
+    write_props_reader()
+
+    os.chdir(working_folder)
+    schrod_path = os.path.abspath(schrodinger_path)
+    run_exec = f"{schrod_path}/run"
+    Path(f"{output_folder_name}").mkdir(parents=True, exist_ok=True)
+    mmgbsa_output_path = os.path.abspath(mmgbsa_output_path)
+    proteins = glob.glob(f"{mmgbsa_output_path}/**")
+
+    # Create dict of every system
+    csv_data = {}
+    for protein in proteins:
+        os.chdir(f"{working_folder}/{output_folder_name}")
+        protein_name = os.path.basename(f"{protein}")
+        write_vmd_script(
+            bs_residues=bs_residues, protein_name=f"{protein_name}.mae", radius=radius
+        )
+        Path(f"{protein_name}").mkdir(parents=True, exist_ok=True)
+        os.chdir(f"{working_folder}/{output_folder_name}/{protein_name}")
+
+        print(f"Analizing {protein_name}")
+        if extract_poses:
+            print(f"Extracting poses...")
+            extract_poses_cmd = f'{run_exec} {working_folder}/extractor.py {protein} -asl "all"'
+            run_silent(extract_poses_cmd, protein_name)
+        if extract_mmgbsa_info:
+            print(f"Extracting MMGBSA info...")
+            extract_mmgbsa_info_cmd = f"{run_exec} {working_folder}/props_reader.py {working_folder}/{output_folder_name}/{protein_name} -o {protein_name}_mmgbsa"
+            run_silent(extract_mmgbsa_info_cmd, protein_name)
+            
+        if calculate_interactions:
+            print(f"Calculating interactions...")
+            calculate_interactions_cmd = f"vmd -dispdev none -e {working_folder}/{output_folder_name}/interactions.tcl -args {working_folder}/{output_folder_name}/{protein_name}  {protein_name} > /dev/null 2>&1"
+            run_silent(calculate_interactions_cmd, protein_name)
+
+        # ranking poses of every system.
+        df = reading_raw_data(mmgbsa_file=f'{protein_name}_mmgbsa.csv', interactions_file=f'{protein_name}_interactions.csv', residues=bs_residues, to_filter="")
+        data_rank, data_set = ranking_poses(df=df, max_rank=100)
+        csv_data[f'{protein_name}_rank'] = data_rank
+        csv_data[f'{protein_name}_set'] = data_set
+        print(" ")
+
+    # Ranking compounds
+    common = common_compounds(csv_data)
+    print("Common compounds for the systems:", common)
+    print("There are", len(common), "common compounds")
+    ranking = ranking_compounds(common_compounds=common, dict_rank_set=csv_data)
+    return ranking
+
