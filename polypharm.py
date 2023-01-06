@@ -199,6 +199,60 @@ def ranking_compounds_old(
     new_df.reset_index(drop=True, inplace=True)
     return new_df
 
+
+def ranking_compounds(
+    common_compounds: list,
+    dict_rank_set: dict,
+    order: str = "SUM_RANK",
+) -> pd.DataFrame:
+    new_row = {}
+    new_df = pd.DataFrame()
+    for c in common_compounds:
+        rows_list = list(v.loc[v["NAME"].str.contains(f"{c}-out")] for k, v in dict_rank_set.items() if k.endswith('rank'))
+        #print(rows_list)
+        prot_list = list(k.replace('_rank', '') for k, v in dict_rank_set.items() if k.endswith('rank'))
+        new_rank = sum(list(v.RANK.iloc[0] for v in rows_list))
+        new_norm_total = sum(list(v.NORMT.iloc[0] for v in rows_list))
+        normt_list = list(v.NORMT.iloc[0] for v in rows_list)
+        dgbind_list = list(v.DGBIND.iloc[0] for v in rows_list)
+        int_list = list(v.INT.iloc[0] for v in rows_list)
+        new_row[f'NAME'] = c
+        for i in range(len(prot_list)):
+            new_row[f'{prot_list[i]}_INT'] = int_list[i]
+            new_row[f'{prot_list[i]}_DGBIND'] = dgbind_list[i]
+            new_row[f'{prot_list[i]}_NORMT'] = normt_list[i]
+        new_row[f'SUM_NORMT'] = new_norm_total
+        new_row[f'SUM_RANK'] = new_rank
+        
+        new_row = pd.DataFrame(new_row, index=[0])
+        new_df = pd.concat([new_df, new_row], ignore_index=True)
+        if order == "SUM_NORMT":
+            new_df = new_df.sort_values(by=["SUM_NORMT"], ascending=False)
+        if order == "SUM_RANK":
+            new_df = new_df.sort_values(by=["SUM_RANK"], ascending=True)
+
+    new_df.reset_index(drop=True, inplace=True)
+    new_df.index = new_df.index + 1
+    new_df.index.name = "POSITION"
+    return new_df
+
+def common_compounds_old(
+    set1: set,
+    set2: set,
+    set3: set,
+    set4: set
+) -> list:
+    common = list(set.intersection(set1, set2, set3, set4))
+    return common
+
+
+def common_compounds(
+    dict_rank_set: dict
+) -> list:
+    common = list(set.intersection(*(set(v) for k, v in dict_rank_set.items() if k.endswith('set'))))
+    return common
+
+
 def run_silent(command: str, basename: str):
     with open(os.devnull, "w") as FNULL:
         try:
