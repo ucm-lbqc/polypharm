@@ -535,14 +535,10 @@ if __name__ == "__main__":
 def write_vmd_script(bs_residues: dict, protein_name: str, radius: float):
     resids_string = bs_residues[protein_name]
 
-    numbers = set()
-    chains = set()
-    resids_string = resids_string.split(",")
-    for pair in resids_string:
-        chains.add(pair.split(":")[0])
-        numbers.add(int(pair.split(":")[1]))
+    resids = [resid.split(":") for resid in resids_string.split(",")]
+    resids = sorted((ch, int(num)) for ch, num in resids)
 
-    vars = dict(chains=sorted(chains), resids=sorted(numbers), radius=radius)
+    vars = dict(resids=resids, radius=radius)
     content = render_template("interactions.tcl", **vars)
     with open("interactions.tcl", "w") as io:
         io.write(content)
