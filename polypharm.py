@@ -1,14 +1,16 @@
 import glob
 import os
+import re
 import shutil
 import subprocess
-import textwrap
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Union, Iterable
 
 import pandas as pd
 
 pd.options.display.max_rows = 100
+
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 def check_rows(length1, length2, length3):
@@ -538,58 +540,12 @@ def write_vmd_script(bs_residues: dict, protein_name: str, radius: float):
     resids_string = resids_string.split(",")
     for pair in resids_string:
         chains.add(pair.split(":")[0])
-        numbers.add(pair.split(":")[1])
+        numbers.add(int(pair.split(":")[1]))
 
-    chains = " ".join(sorted(chains))
-    numbers = " ".join(sorted(numbers))
-
-    content = f"""\
-        set folder [lindex $argv 0]
-        set output [lindex $argv 1]
-        set pdbfiles [glob $folder/*.mae]
-        set ligand "UNK"
-        set resids {{{numbers}}}
-        set radius {{{radius}}}
-        set chains {{{chains}}}
-
-        set outfile [open ${{output}}_interactions.csv w]
-
-        puts -nonewline $outfile "Name"
-        foreach resid $resids {{
-            foreach chain $chains {{
-                puts -nonewline $outfile ",$chain:$resid"
-            }}
-        }}
-        puts $outfile ""
-
-
-        foreach file $pdbfiles {{
-            set basename [file rootname [file tail $file]]
-            puts -nonewline $outfile $basename
-            mol new $file
-            foreach resid $resids {{
-                foreach chain $chains {{
-                    set sel [atomselect top "same residue as (resid $resids and chain $chain and within $radius of resname $ligand)"]
-                    set current_resids [lsort -unique [$sel get resid]]
-                    if {{[lsearch $current_resids $resid] > -1}} {{
-                        # lset mat $i [expr $j*[llength $chains]+$offset] 1
-                        puts -nonewline $outfile ",1"
-                    }} else {{
-                        puts -nonewline $outfile ",0"
-                    }}
-                }}
-            }}
-            puts $outfile ""
-            mol delete top
-        }}
-
-        close $outfile
-
-        exit
-        """
-
+    vars = dict(chains=sorted(chains), resids=sorted(numbers), radius=radius)
+    content = render_template("interactions.tcl", **vars)
     with open("interactions.tcl", "w") as io:
-        io.write(textwrap.dedent(content))
+        io.write(content)
 
 
 def analysis(
@@ -659,3 +615,38 @@ def analysis(
     print("There are", len(common), "common compounds")
     ranking = ranking_compounds(common_compounds=common, dict_rank_set=csv_data)
     return ranking
+
+
+# TODO: move a module
+def render_template(
+    filename: str, **vars: Union[bool, int, float, str, Iterable]
+) -> str:
+    path = os.path.join(SCRIPT_DIR, "templates", filename)
+    with open(path) as io:
+        content = io.read()
+    ext = os.path.splitext(filename)[1]
+    for var, value in vars.items():
+        content = content.replace(f"%{{{var}}}", renderable_value(value, ext))
+
+    names = re.findall(r"%\{(\w+)\}", content)
+    if names:
+        raise ValueError(
+            f"Missing vars for template {repr(filename)}: {' '.join(names)}"
+        )
+
+    return content
+
+
+# TODO: move a module
+def renderable_value(value: Union[bool, int, float, str, Iterable], ext: str) -> str:
+    if ext == ".tcl":
+        if isinstance(value, bool):
+            return str(value).lower()
+        elif isinstance(value, str):
+            return f'"{value}"'
+        elif isinstance(value, Iterable):
+            return "{" + " ".join(renderable_value(ele, ext) for ele in value) + "}"
+        else:
+            return str(value)
+    else:
+        return str(value)
