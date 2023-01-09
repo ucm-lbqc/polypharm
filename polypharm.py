@@ -1,10 +1,11 @@
-import pandas as pd
-import subprocess
-import os
 import glob
-from pathlib import Path
+import os
 import shutil
+import subprocess
+from pathlib import Path
 from typing import Tuple
+
+import pandas as pd
 
 pd.options.display.max_rows = 100
 
@@ -57,8 +58,8 @@ def reading_raw_data(
 ) -> pd.DataFrame:
     print("Reading data...")
     protein_name = os.path.basename(f"{mmgbsa_file}")
-    protein_name = protein_name.replace('_mmgbsa.csv', '')
-    residues = residues[f'{protein_name}.mae'].split(",")
+    protein_name = protein_name.replace("_mmgbsa.csv", "")
+    residues = residues[f"{protein_name}.mae"].split(",")
     residues.append("NAME")
     df_mmgbsa = pd.read_csv(f"{mmgbsa_file}")
     print("MMGBSA data rows:", df_mmgbsa.shape[0])
@@ -141,7 +142,7 @@ def reading_raw_data(
 
 
 def ranking_compounds_old(
-   common_compounds, df_task1_rank, df_nav_rank, df_kv_cc_rank, df_kv_sp_rank, order
+    common_compounds, df_task1_rank, df_nav_rank, df_kv_cc_rank, df_kv_sp_rank, order
 ):
     new_df = pd.DataFrame()
     for c in common_compounds:
@@ -208,22 +209,30 @@ def ranking_compounds(
     new_row = {}
     new_df = pd.DataFrame()
     for c in common_compounds:
-        rows_list = list(v.loc[v["NAME"].str.contains(f"{c}-out")] for k, v in dict_rank_set.items() if k.endswith('rank'))
-        #print(rows_list)
-        prot_list = list(k.replace('_rank', '') for k, v in dict_rank_set.items() if k.endswith('rank'))
+        rows_list = list(
+            v.loc[v["NAME"].str.contains(f"{c}-out")]
+            for k, v in dict_rank_set.items()
+            if k.endswith("rank")
+        )
+        # print(rows_list)
+        prot_list = list(
+            k.replace("_rank", "")
+            for k, v in dict_rank_set.items()
+            if k.endswith("rank")
+        )
         new_rank = sum(list(v.RANK.iloc[0] for v in rows_list))
         new_norm_total = sum(list(v.NORMT.iloc[0] for v in rows_list))
         normt_list = list(v.NORMT.iloc[0] for v in rows_list)
         dgbind_list = list(v.DGBIND.iloc[0] for v in rows_list)
         int_list = list(v.INT.iloc[0] for v in rows_list)
-        new_row[f'NAME'] = c
+        new_row[f"NAME"] = c
         for i in range(len(prot_list)):
-            new_row[f'{prot_list[i]}_INT'] = int_list[i]
-            new_row[f'{prot_list[i]}_DGBIND'] = dgbind_list[i]
-            new_row[f'{prot_list[i]}_NORMT'] = normt_list[i]
-        new_row[f'SUM_NORMT'] = new_norm_total
-        new_row[f'SUM_RANK'] = new_rank
-        
+            new_row[f"{prot_list[i]}_INT"] = int_list[i]
+            new_row[f"{prot_list[i]}_DGBIND"] = dgbind_list[i]
+            new_row[f"{prot_list[i]}_NORMT"] = normt_list[i]
+        new_row[f"SUM_NORMT"] = new_norm_total
+        new_row[f"SUM_RANK"] = new_rank
+
         new_row = pd.DataFrame(new_row, index=[0])
         new_df = pd.concat([new_df, new_row], ignore_index=True)
         if order == "SUM_NORMT":
@@ -236,20 +245,18 @@ def ranking_compounds(
     new_df.index.name = "POSITION"
     return new_df
 
-def common_compounds_old(
-    set1: set,
-    set2: set,
-    set3: set,
-    set4: set
-) -> list:
+
+def common_compounds_old(set1: set, set2: set, set3: set, set4: set) -> list:
     common = list(set.intersection(set1, set2, set3, set4))
     return common
 
 
-def common_compounds(
-    dict_rank_set: dict
-) -> list:
-    common = list(set.intersection(*(set(v) for k, v in dict_rank_set.items() if k.endswith('set'))))
+def common_compounds(dict_rank_set: dict) -> list:
+    common = list(
+        set.intersection(
+            *(set(v) for k, v in dict_rank_set.items() if k.endswith("set"))
+        )
+    )
     return common
 
 
@@ -606,9 +613,9 @@ def analysis(
     bs_residues: str,
     radius: float,
     output_folder_name: str,
-    extract_poses: bool= True,
-    extract_mmgbsa_info: bool= True,
-    calculate_interactions: bool=True,
+    extract_poses: bool = True,
+    extract_mmgbsa_info: bool = True,
+    calculate_interactions: bool = True,
 ):
     write_extractor()
     write_props_reader()
@@ -634,23 +641,30 @@ def analysis(
         print(f"Analizing {protein_name}")
         if extract_poses:
             print(f"Extracting poses...")
-            extract_poses_cmd = f'{run_exec} {working_folder}/extractor.py {protein} -asl "all"'
+            extract_poses_cmd = (
+                f'{run_exec} {working_folder}/extractor.py {protein} -asl "all"'
+            )
             run_silent(extract_poses_cmd, protein_name)
         if extract_mmgbsa_info:
             print(f"Extracting MMGBSA info...")
             extract_mmgbsa_info_cmd = f"{run_exec} {working_folder}/props_reader.py {working_folder}/{output_folder_name}/{protein_name} -o {protein_name}_mmgbsa"
             run_silent(extract_mmgbsa_info_cmd, protein_name)
-            
+
         if calculate_interactions:
             print(f"Calculating interactions...")
             calculate_interactions_cmd = f"vmd -dispdev none -e {working_folder}/{output_folder_name}/interactions.tcl -args {working_folder}/{output_folder_name}/{protein_name}  {protein_name} > /dev/null 2>&1"
             run_silent(calculate_interactions_cmd, protein_name)
 
         # ranking poses of every system.
-        df = reading_raw_data(mmgbsa_file=f'{protein_name}_mmgbsa.csv', interactions_file=f'{protein_name}_interactions.csv', residues=bs_residues, to_filter="")
+        df = reading_raw_data(
+            mmgbsa_file=f"{protein_name}_mmgbsa.csv",
+            interactions_file=f"{protein_name}_interactions.csv",
+            residues=bs_residues,
+            to_filter="",
+        )
         data_rank, data_set = ranking_poses(df=df, max_rank=100)
-        csv_data[f'{protein_name}_rank'] = data_rank
-        csv_data[f'{protein_name}_set'] = data_set
+        csv_data[f"{protein_name}_rank"] = data_rank
+        csv_data[f"{protein_name}_set"] = data_set
         print(" ")
 
     # Ranking compounds
@@ -659,4 +673,3 @@ def analysis(
     print("There are", len(common), "common compounds")
     ranking = ranking_compounds(common_compounds=common, dict_rank_set=csv_data)
     return ranking
-
