@@ -4,7 +4,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Tuple, Union, Iterable
+from typing import List, Tuple, Union, Iterable
 
 import pandas as pd
 
@@ -532,13 +532,8 @@ if __name__ == "__main__":
         )
 
 
-def write_vmd_script(bs_residues: dict, protein_name: str, radius: float):
-    resids_string = bs_residues[protein_name]
-
-    resids = [resid.split(":") for resid in resids_string.split(",")]
-    resids = sorted((ch, int(num)) for ch, num in resids)
-
-    vars = dict(resids=resids, radius=radius)
+def write_vmd_script(residues: List[Tuple[str, int]], radius: float) -> None:
+    vars = dict(resids=residues, radius=radius)
     content = render_template("interactions.tcl", **vars)
     with open("interactions.tcl", "w") as io:
         io.write(content)
@@ -570,9 +565,10 @@ def analysis(
     for protein in proteins:
         os.chdir(f"{working_folder}/{output_folder_name}")
         protein_name = os.path.basename(f"{protein}")
-        write_vmd_script(
-            bs_residues=bs_residues, protein_name=f"{protein_name}.mae", radius=radius
-        )
+
+        residues = parse_residue_list(bs_residues["{protein_name}.mae"])
+        write_vmd_script(residues, radius)
+
         Path(f"{protein_name}").mkdir(parents=True, exist_ok=True)
         os.chdir(f"{working_folder}/{output_folder_name}/{protein_name}")
 
@@ -646,3 +642,9 @@ def renderable_value(value: Union[bool, int, float, str, Iterable], ext: str) ->
             return str(value)
     else:
         return str(value)
+
+
+# TODO: move to a module
+def parse_residue_list(raw_residues: str) -> List[Tuple[str, int]]:
+    residues = [resid.split(":") for resid in raw_residues.split(",")]
+    return sorted((ch.strip(), int(num)) for ch, num in residues)
