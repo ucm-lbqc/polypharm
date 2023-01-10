@@ -2,6 +2,7 @@ import glob
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -9,7 +10,12 @@ import pandas as pd
 
 pd.options.display.max_rows = 100
 
+SCHRODINGER_PATH = os.getenv("SCHRODINGER_PATH")
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+if not SCHRODINGER_PATH:
+    print("error: Environment variable SCHRODINGER_PATH is not set", file=sys.stderr)
+    exit(1)
 
 
 def ranking_poses(df: pd.DataFrame, max_rank: int) -> Tuple[pd.DataFrame, set]:
@@ -241,7 +247,6 @@ def run_silent(command: str, basename: str):
 
 def run_ifd(
     working_folder: str,
-    schrodinger_path: str,
     ligands_path: str,
     proteins_path: str,
     output_folder_name: str,
@@ -250,8 +255,7 @@ def run_ifd(
     nprime_cpu=2,
 ):
     os.chdir(working_folder)
-    schrod_path = os.path.abspath(schrodinger_path)
-    ifd_exec = f"{schrod_path}/ifd"
+    ifd_exec = f"{SCHRODINGER_PATH}/ifd"
     Path(f"{output_folder_name}").mkdir(parents=True, exist_ok=True)
     ligands_path = os.path.abspath(ligands_path)
     proteins_path = os.path.abspath(proteins_path)
@@ -354,14 +358,12 @@ def run_ifd(
 
 def run_mmgbsa(
     working_folder: str,
-    schrodinger_path: str,
     ifd_output_path: str,
     output_folder_name: str,
     mmgbsa_cpu=2,
 ):
     os.chdir(working_folder)
-    schrod_path = os.path.abspath(schrodinger_path)
-    mmgbsa_exec = f"{schrod_path}/prime_mmgbsa"
+    mmgbsa_exec = f"{SCHRODINGER_PATH}/prime_mmgbsa"
     Path(f"{output_folder_name}").mkdir(parents=True, exist_ok=True)
     ifd_output_path = os.path.abspath(ifd_output_path)
     proteins = glob.glob(f"{ifd_output_path}/**")
@@ -393,7 +395,6 @@ def run_mmgbsa(
 
 def analysis(
     working_folder: str,
-    schrodinger_path: str,
     mmgbsa_output_path: str,
     bs_residues: Dict[str, str],
     radius: float,
@@ -401,8 +402,7 @@ def analysis(
     order: str = "INT_NORM-NORMT",
 ):
     os.chdir(working_folder)
-    schrod_path = os.path.abspath(schrodinger_path)
-    run_exec = f"{schrod_path}/run"
+    run_exec = f"{SCHRODINGER_PATH}/run"
     Path(f"{output_folder_name}").mkdir(parents=True, exist_ok=True)
     mmgbsa_output_path = os.path.abspath(mmgbsa_output_path)
     proteins = glob.glob(f"{mmgbsa_output_path}/**")
