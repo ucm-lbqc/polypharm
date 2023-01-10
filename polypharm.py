@@ -270,8 +270,8 @@ def run_ifd(
     prot_file: PathLike,
     lig_file: PathLike,
     resids: str,
-    glide_cpu: int = 2,
-    prime_cpu: int = 2,
+    glide_cpus: int = 2,
+    prime_cpus: int = 2,
 ) -> None:
     inp_file = f"{Path(lig_file).stem}.inp"
     with open(inp_file, "w") as io:
@@ -286,8 +286,8 @@ def run_ifd(
     run_silent(
         os.path.join(SCHRODINGER_PATH, "ifd"),
         inp_file,
-        NGLIDECPU=glide_cpu,
-        NPRIMECPU=prime_cpu,
+        NGLIDECPU=glide_cpus,
+        NPRIMECPU=prime_cpus,
         HOST="localhost",
         SUBHOST="localhost",
         TMPLAUNCHDIR=True,
@@ -301,8 +301,8 @@ def run_ifd_cross(
     lig_files: List[PathLike],
     bs_residues: Dict[str, str],
     workdir: PathLike = "ifd",
-    glide_cpu: int = 2,
-    prime_cpu: int = 2,
+    glide_cpus: int = 2,
+    prime_cpus: int = 2,
 ):
     for prot_file in map(Path, prot_files):
         prot_name = prot_file.stem
@@ -329,51 +329,41 @@ def run_ifd_cross(
                     os.path.join("..", prot_file.name),
                     lig_file.name,
                     bs_residues[prot_file.name],
-                    glide_cpu,
-                    prime_cpu,
+                    glide_cpus,
+                    prime_cpus,
                 )
 
 
-def run_mmgbsa(
-    working_folder: str,
-    ifd_output_path: str,
-    output_folder_name: str,
-    mmgbsa_cpu=2,
+def run_mmgbsa_cross(
+    ifd_files: List[PathLike],
+    workdir: PathLike,
+    cpus: int = 2,
 ):
-    os.chdir(working_folder)
-    Path(f"{output_folder_name}").mkdir(parents=True, exist_ok=True)
-    ifd_output_path = os.path.abspath(ifd_output_path)
-    proteins = glob.glob(f"{ifd_output_path}/**")
+    for i, ifd_file in enumerate(map(Path, ifd_files)):
+        ifd_file = ifd_file.absolute()
+        prot_name = ifd_file.parent.parts[-1]
 
-    for protein in proteins:
-        os.chdir(f"{working_folder}/{output_folder_name}")
-        protein_name = os.path.basename(f"{protein}")
-        print(f"Protein: {protein_name}")
-        Path(f"{protein_name}").mkdir(parents=True, exist_ok=True)
-        os.chdir(f"{working_folder}/{output_folder_name}/{protein_name}")
-        ligands = glob.glob(f"{protein}/**/*-out.maegz")
-        n_ligands = len(ligands)
-        lig_id = 0
-        for ligand in ligands:
-            lig_id += 1
-            ligand_name = os.path.basename(f"{ligand}")
-            ligand_basename = os.path.splitext(ligand_name)[0]
-            if os.path.exists(f"{ligand_basename}-out.maegz"):
-                print(f"{ligand_basename} already exists. Skipping ligand...")
-                continue
+        prot_workdir = Path(workdir, prot_name)
+        prot_workdir.mkdir(parents=True, exist_ok=True)
 
-            print(
-                f"Running MMGBSA for ligand {ligand_basename} in {protein_name} ({lig_id}/{n_ligands})..."
-            )
+        lig_name = ifd_file.stem.replace("-out", "")
+        jobid = f"{prot_name}/{lig_name}"
+
+        if os.path.exists(prot_workdir / f"{lig_name}-out.maegz"):
+            print(f"Skipping MM/GBSA for {jobid}... already exists")
+            continue
+
+        print(f"Running MM/GBSA for {jobid} [{i}/{len(ifd_files)}]...")
+        with transient_dir(prot_workdir):
             run_silent(
                 os.path.join(SCHRODINGER_PATH, "prime_mmgbsa"),
-                ligand,
+                str(ifd_file),
                 ligand="(res.pt UNK)",
                 job_type="REAL_MIN",
                 out_type="COMPLEX",
                 csv_output="yes",
-                j=ligand_basename,
-                HOST=f"localhost:{mmgbsa_cpu}",
+                j=lig_name,
+                HOST=f"localhost:{cpus}",
                 WAIT=True,
                 use_single_dash=True,
             )
