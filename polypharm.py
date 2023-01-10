@@ -1,3 +1,4 @@
+import contextlib
 import glob
 import os
 import shutil
@@ -10,6 +11,8 @@ import pandas as pd
 import jinja2
 
 pd.options.display.max_rows = 100
+
+PathLike = Union[str, Path]
 
 SCHRODINGER_PATH = os.getenv("SCHRODINGER_PATH")
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -264,15 +267,43 @@ def run_silent(
 
 
 def run_ifd(
-    prot_files: List[str],
-    lig_files: List[str],
+    prot_file: PathLike,
+    lig_file: PathLike,
+    resids: str,
+    glide_cpu: int = 2,
+    prime_cpu: int = 2,
+) -> None:
+    inp_file = f"{Path(lig_file).stem}.inp"
+    with open(inp_file, "w") as io:
+        template = TEMPLATE_ENV.get_template("ifd.inp")
+        vars = dict(
+            protfile=prot_file,
+            ligfile=Path(lig_file).name,
+            resids=resids,
+        )
+        io.write(template.render(vars))
+
+    run_silent(
+        os.path.join(SCHRODINGER_PATH, "ifd"),
+        inp_file,
+        NGLIDECPU=glide_cpu,
+        NPRIMECPU=prime_cpu,
+        HOST="localhost",
+        SUBHOST="localhost",
+        TMPLAUNCHDIR=True,
+        WAIT=True,
+        use_single_dash=True,
+    )
+
+
+def run_ifd_cross(
+    prot_files: List[PathLike],
+    lig_files: List[PathLike],
     bs_residues: Dict[str, str],
-    workdir: str = "ifd",
+    workdir: PathLike = "ifd",
     glide_cpu: int = 2,
     prime_cpu: int = 2,
 ):
-    template = TEMPLATE_ENV.get_template("ifd.inp")
-
     for prot_file in map(Path, prot_files):
         prot_name = prot_file.stem
 
@@ -282,37 +313,25 @@ def run_ifd(
 
         for i, lig_file in enumerate(map(Path, lig_files)):
             lig_name = lig_file.stem
-            lig_workdir = prot_workdir / lig_name
+            jobid = f"{prot_name}/{lig_name}"
 
+            lig_workdir = prot_workdir / lig_name
             if lig_workdir.exists():
-                print(f"Skipping IFD for {prot_name}/{lig_name}... already exists")
+                print(f"Skipping IFD for {jobid}... already exists")
                 continue
             else:
                 lig_workdir.mkdir()
-
             shutil.copy(lig_file, lig_workdir)
-            inp_file = f"{lig_name}.inp"
-            with open(lig_workdir / inp_file, "w") as io:
-                vars = dict(
-                    protfile=os.path.join("..", prot_file.name),
-                    ligfile=lig_file.name,
-                    resids=bs_residues[prot_file.name],
-                )
-                io.write(template.render(vars))
 
-            print(f"Running IFD for{prot_name}/{lig_name} ({i}/{len(lig_files)})...")
-            os.chdir(lig_workdir)
-            run_silent(
-                os.path.join(SCHRODINGER_PATH, "ifd"),
-                inp_file,
-                NGLIDECPU=glide_cpu,
-                NPRIMECPU=prime_cpu,
-                HOST="localhost",
-                SUBHOST="localhost",
-                TMPLAUNCHDIR=True,
-                WAIT=True,
-                use_single_dash=True,
-            )
+            print(f"Running IFD for {jobid} [{i}/{len(lig_files)}]...")
+            with transient_dir(lig_workdir):
+                run_ifd(
+                    os.path.join("..", prot_file.name),
+                    lig_file.name,
+                    bs_residues[prot_file.name],
+                    glide_cpu,
+                    prime_cpu,
+                )
 
 
 def run_mmgbsa(
@@ -358,6 +377,16 @@ def run_mmgbsa(
                 WAIT=True,
                 use_single_dash=True,
             )
+
+
+@contextlib.contextmanager
+def transient_dir(path: PathLike):
+    cwd = os.getcwd()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(cwd)
 
 
 def analysis(
