@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import pandas as pd
 import jinja2
@@ -241,12 +241,26 @@ def common_compounds(dict_rank_set: dict) -> list:
     return common
 
 
-def run_silent(command: str, basename: str):
-    with open(os.devnull, "w") as FNULL:
+def run_silent(
+    program: str,
+    *args: str,
+    use_single_dash: bool = False,
+    **kwargs: Union[bool, int, float, str],
+) -> None:
+    cmd = [program] + list(args)
+    for option, value in kwargs.items():
+        prefix = "-" if use_single_dash else ("--" if len(option) > 1 else "-")
+        option = prefix + option.replace("_", "-")
+
+        cmd.append(option)
+        if not isinstance(value, bool):
+            cmd.append(repr(value))
+
+    with open(os.devnull, "w") as io:
         try:
-            subprocess.run(command, shell=True, stdout=FNULL)
+            subprocess.run(cmd, check=True, stdout=io, stderr=io)
         except subprocess.CalledProcessError:
-            print(f"Error occured with system {basename}")
+            print("Error occured executing {}".format(" ".join(cmd)), file=sys.stderr)
 
 
 def run_ifd(
@@ -277,7 +291,8 @@ def run_ifd(
                 lig_workdir.mkdir()
 
             shutil.copy(lig_file, lig_workdir)
-            with open(lig_workdir / f"{lig_name}.inp", "w") as io:
+            inp_file = f"{lig_name}.inp"
+            with open(lig_workdir / inp_file, "w") as io:
                 vars = dict(
                     protfile=os.path.join("..", prot_file.name),
                     ligfile=lig_file.name,
@@ -285,10 +300,19 @@ def run_ifd(
                 )
                 io.write(template.render(vars))
 
-            os.chdir(lig_workdir)
-            cmd = f"{SCHRODINGER_PATH}/ifd -NGLIDECPU {glide_cpu} -NPRIMECPU {prime_cpu} {lig_name}.inp -HOST localhost -SUBHOST localhost -TMPLAUNCHDIR -WAIT > /dev/null 2>&1"
             print(f"Running IFD for{prot_name}/{lig_name} ({i}/{len(lig_files)})...")
-            run_silent(cmd, lig_name)
+            os.chdir(lig_workdir)
+            run_silent(
+                os.path.join(SCHRODINGER_PATH, "ifd"),
+                inp_file,
+                NGLIDECPU=glide_cpu,
+                NPRIMECPU=prime_cpu,
+                HOST="localhost",
+                SUBHOST="localhost",
+                TMPLAUNCHDIR=True,
+                WAIT=True,
+                use_single_dash=True,
+            )
 
 
 def run_mmgbsa(
@@ -298,11 +322,9 @@ def run_mmgbsa(
     mmgbsa_cpu=2,
 ):
     os.chdir(working_folder)
-    mmgbsa_exec = f"{SCHRODINGER_PATH}/prime_mmgbsa"
     Path(f"{output_folder_name}").mkdir(parents=True, exist_ok=True)
     ifd_output_path = os.path.abspath(ifd_output_path)
     proteins = glob.glob(f"{ifd_output_path}/**")
-    UNK = "'UNK '"
 
     for protein in proteins:
         os.chdir(f"{working_folder}/{output_folder_name}")
@@ -321,11 +343,21 @@ def run_mmgbsa(
                 print(f"{ligand_basename} already exists. Skipping ligand...")
                 continue
 
-            mmgbsa_calculation = f'{mmgbsa_exec} -HOST "localhost:{mmgbsa_cpu}" "{ligand}" -j {ligand_basename} -ligand "(res.pt  {UNK})" -csv_output yes -out_type COMPLEX -job_type REAL_MIN -WAIT > /dev/null 2>&1'
             print(
                 f"Running MMGBSA for ligand {ligand_basename} in {protein_name} ({lig_id}/{n_ligands})..."
             )
-            run_silent(mmgbsa_calculation, ligand_basename)
+            run_silent(
+                os.path.join(SCHRODINGER_PATH, "prime_mmgbsa"),
+                ligand,
+                ligand="(res.pt UNK)",
+                job_type="REAL_MIN",
+                out_type="COMPLEX",
+                csv_output="yes",
+                j=ligand_basename,
+                HOST=f"localhost:{mmgbsa_cpu}",
+                WAIT=True,
+                use_single_dash=True,
+            )
 
 
 def analysis(
@@ -337,7 +369,6 @@ def analysis(
     order: str = "INT_NORM-NORMT",
 ):
     os.chdir(working_folder)
-    run_exec = f"{SCHRODINGER_PATH}/run"
     Path(f"{output_folder_name}").mkdir(parents=True, exist_ok=True)
     mmgbsa_output_path = os.path.abspath(mmgbsa_output_path)
     proteins = glob.glob(f"{mmgbsa_output_path}/**")
@@ -354,8 +385,14 @@ def analysis(
 
         print(f"Analizing {protein_name}")
         csvfile = f"{working_folder}/{output_folder_name}/{protein_name}.csv"
-        cmd = f"{run_exec} {SCRIPT_DIR}/scripts/report.py -c {radius} -o {csvfile} -r {resids} {mmgbsa_output_path}/{protein_name}"
-        run_silent(cmd, protein_name)
+        run_silent(
+            os.path.join(SCHRODINGER_PATH, "run"),
+            os.path.join(SCRIPT_DIR, "scripts", "report.py"),
+            os.path.join(mmgbsa_output_path, protein_name),
+            cutoff=radius,
+            output=csvfile,
+            residues=resids,
+        )
 
         # ranking poses of every system.
         df = reading_raw_data(csvfile, order)
