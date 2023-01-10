@@ -1,22 +1,15 @@
 import glob
 import os
-import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import List, Tuple, Union, Iterable
+from typing import Dict, Tuple
 
 import pandas as pd
 
 pd.options.display.max_rows = 100
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-
-
-def check_rows(length1, length2, length3):
-    n_rows = (length1) == (length2) == (length3)
-    if n_rows == False:
-        print("Warning: Number of rows in dataframes is not the same")
 
 
 def ranking_poses(df: pd.DataFrame, max_rank: int) -> Tuple[pd.DataFrame, set]:
@@ -53,39 +46,14 @@ def ranking_poses(df: pd.DataFrame, max_rank: int) -> Tuple[pd.DataFrame, set]:
 
 
 def reading_raw_data(
-    mmgbsa_file: str,
-    interactions_file: str,
-    residues: list,
-    to_filter: str,
+    csvfile: str,
     order: str = "INT_NORM-NORMT",
 ) -> pd.DataFrame:
     print("Reading data...")
-    protein_name = os.path.basename(f"{mmgbsa_file}")
-    protein_name = protein_name.replace("_mmgbsa.csv", "")
-    residues = residues[f"{protein_name}.mae"].split(",")
-    residues.append("NAME")
-    df_mmgbsa = pd.read_csv(f"{mmgbsa_file}")
-    print("MMGBSA data rows:", df_mmgbsa.shape[0])
-    df_interactions = pd.read_csv(f"{interactions_file}")
-    print("Interactions data rows:", df_interactions.shape[0])
-    df_interactions.rename(columns=str.upper, inplace=True)
-
-    # Erase columns that are not part of the binding-site residues
-    for column in df_interactions:
-        if column not in residues:
-            df_interactions.drop([f"{column}"], axis=1, inplace=True)
-
-    df = pd.merge(df_mmgbsa, df_interactions, left_on="NAME", right_on="NAME")
-    print("Total rows (merged):", df.shape[0])
-    check_rows(df_interactions.shape[0], df_mmgbsa.shape[0], df.shape[0])
-
-    # Filter the poses with the option=to_filter.
-    if to_filter != "":
-        print("to_Filtering...")
-        df = df[df["NAME"].str.contains(to_filter) == False]
-
+    df: pd.DataFrame = pd.read_csv(csvfile)
     df["INT"] = df.iloc[:, 3:].sum(axis=1)
     df = df.sort_values(by=["INT"], ascending=False)
+
     # Interactions and energy normalization
     best_dgbind = df.DGBIND.min()
     worst_dgbind = df.DGBIND.max()
@@ -423,88 +391,15 @@ def run_mmgbsa(
             run_silent(mmgbsa_calculation, ligand_basename)
 
 
-def write_extractor():
-    with open("extractor.py", "w") as f:
-        f.write(
-            """from __future__ import print_function
-import argparse
-import os
-import sys
-import glob
-from schrodinger.structure import StructureReader, StructureWriter
-from schrodinger.utils.fileutils import get_jobname
-from schrodinger.structutils.analyze import evaluate_asl
-
-def parse_args(argv):
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("path", help="Path to the (*.mae[gz]) files")
-    parser.add_argument("-o", "--output", help="Output name for structures.")
-    parser.add_argument(
-        "-asl",
-        dest="asl_expr",
-        required=False,
-        help="Only atoms selected by the given ASL expression will " "be extracted.",
-    )
-    opts = parser.parse_args(argv)
-    return vars(opts), opts.path
-def main(argv):
-    opts, path = parse_args(argv)
-    maefiles = sorted(glob.glob(os.path.join(path, "*.maegz")))
-    endname = "%s" % opts["output"]
-    for maefile in maefiles:
-        output_name = get_jobname(maefile)
-        reader = StructureReader(maefile)
-        count = 0
-        for st in reader:
-            count += 1
-            st_number = str(count)
-            output_name2 = "{}_{}".format(output_name, st_number)
-            data1 = "{:<20}".format(output_name2)
-            # Adding property
-            name_property = st.property.get("s_m_name")
-            if name_property is not None:
-                pass
-            else:
-                st.property["s_m_name"] = output_name2
-            print(data1)
-            # Writing ligands
-            if opts["asl_expr"] is not None:
-                indices1 = evaluate_asl(st, "(%s)" % opts["asl_expr"])
-                st1 = st.extract(indices1, copy_props=True)
-                st1.title = str(output_name2)
-                writer = StructureWriter(output_name2 + ".mae")
-                writer.append(st1)
-                writer.close()
-            else:
-                pass
-        reader.close()
-        writer.close()
-if __name__ == "__main__":
-    main(sys.argv[1:])
-    """
-        )
-
-
-def write_vmd_script(residues: List[Tuple[str, int]], radius: float) -> None:
-    vars = dict(resids=residues, radius=radius)
-    content = render_template("interactions.tcl", **vars)
-    with open("interactions.tcl", "w") as io:
-        io.write(content)
-
-
 def analysis(
     working_folder: str,
     schrodinger_path: str,
     mmgbsa_output_path: str,
-    bs_residues: str,
+    bs_residues: Dict[str, str],
     radius: float,
     output_folder_name: str,
-    extract_poses: bool = True,
-    extract_mmgbsa_info: bool = True,
-    calculate_interactions: bool = True,
+    order: str = "INT_NORM-NORMT",
 ):
-    write_extractor()
-
     os.chdir(working_folder)
     schrod_path = os.path.abspath(schrodinger_path)
     run_exec = f"{schrod_path}/run"
@@ -517,37 +412,18 @@ def analysis(
     for protein in proteins:
         os.chdir(f"{working_folder}/{output_folder_name}")
         protein_name = os.path.basename(f"{protein}")
-
-        residues = parse_residue_list(bs_residues["{protein_name}.mae"])
-        write_vmd_script(residues, radius)
+        resids = bs_residues[f"{protein_name}.mae"]
 
         Path(f"{protein_name}").mkdir(parents=True, exist_ok=True)
         os.chdir(f"{working_folder}/{output_folder_name}/{protein_name}")
 
         print(f"Analizing {protein_name}")
-        if extract_poses:
-            print(f"Extracting poses...")
-            extract_poses_cmd = (
-                f'{run_exec} {working_folder}/extractor.py {protein} -asl "all"'
-            )
-            run_silent(extract_poses_cmd, protein_name)
-        if extract_mmgbsa_info:
-            print(f"Extracting MMGBSA info...")
-            cmd = f"{run_exec} {SCRIPT_DIR}/scripts/report.py -o {working_folder}/{output_folder_name}/{protein_name}_mmgbsa.csv {mmgbsa_output_path}/{protein_name}"
-            run_silent(cmd, protein_name)
-
-        if calculate_interactions:
-            print(f"Calculating interactions...")
-            calculate_interactions_cmd = f"vmd -dispdev none -e {working_folder}/{output_folder_name}/interactions.tcl -args {working_folder}/{output_folder_name}/{protein_name}  {protein_name} > /dev/null 2>&1"
-            run_silent(calculate_interactions_cmd, protein_name)
+        csvfile = f"{working_folder}/{output_folder_name}/{protein_name}.csv"
+        cmd = f"{run_exec} {SCRIPT_DIR}/scripts/report.py -c {radius} -o {csvfile} -r {resids} {mmgbsa_output_path}/{protein_name}"
+        run_silent(cmd, protein_name)
 
         # ranking poses of every system.
-        df = reading_raw_data(
-            mmgbsa_file=f"{protein_name}_mmgbsa.csv",
-            interactions_file=f"{protein_name}_interactions.csv",
-            residues=bs_residues,
-            to_filter="",
-        )
+        df = reading_raw_data(csvfile, order)
         data_rank, data_set = ranking_poses(df=df, max_rank=100)
         csv_data[f"{protein_name}_rank"] = data_rank
         csv_data[f"{protein_name}_set"] = data_set
@@ -559,44 +435,3 @@ def analysis(
     print("There are", len(common), "common compounds")
     ranking = ranking_compounds(common_compounds=common, dict_rank_set=csv_data)
     return ranking
-
-
-# TODO: move a module
-def render_template(
-    filename: str, **vars: Union[bool, int, float, str, Iterable]
-) -> str:
-    path = os.path.join(SCRIPT_DIR, "templates", filename)
-    with open(path) as io:
-        content = io.read()
-    ext = os.path.splitext(filename)[1]
-    for var, value in vars.items():
-        content = content.replace(f"%{{{var}}}", renderable_value(value, ext))
-
-    names = re.findall(r"%\{(\w+)\}", content)
-    if names:
-        raise ValueError(
-            f"Missing vars for template {repr(filename)}: {' '.join(names)}"
-        )
-
-    return content
-
-
-# TODO: move a module
-def renderable_value(value: Union[bool, int, float, str, Iterable], ext: str) -> str:
-    if ext == ".tcl":
-        if isinstance(value, bool):
-            return str(value).lower()
-        elif isinstance(value, str):
-            return f'"{value}"'
-        elif isinstance(value, Iterable):
-            return "{" + " ".join(renderable_value(ele, ext) for ele in value) + "}"
-        else:
-            return str(value)
-    else:
-        return str(value)
-
-
-# TODO: move to a module
-def parse_residue_list(raw_residues: str) -> List[Tuple[str, int]]:
-    residues = [resid.split(":") for resid in raw_residues.split(",")]
-    return sorted((ch.strip(), int(num)) for ch, num in residues)
