@@ -4,14 +4,18 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import pandas as pd
+import jinja2
 
 pd.options.display.max_rows = 100
 
 SCHRODINGER_PATH = os.getenv("SCHRODINGER_PATH")
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+TEMPLATE_ENV = jinja2.Environment(
+    loader=jinja2.FileSystemLoader(os.path.join(SCRIPT_DIR, "templates"))
+)
 
 if not SCHRODINGER_PATH:
     print("error: Environment variable SCHRODINGER_PATH is not set", file=sys.stderr)
@@ -246,114 +250,45 @@ def run_silent(command: str, basename: str):
 
 
 def run_ifd(
-    working_folder: str,
-    ligands_path: str,
-    proteins_path: str,
-    output_folder_name: str,
-    bs_residues: list,
-    nglide_cpu=2,
-    nprime_cpu=2,
+    prot_files: List[str],
+    lig_files: List[str],
+    bs_residues: Dict[str, str],
+    workdir: str = "ifd",
+    glide_cpu: int = 2,
+    prime_cpu: int = 2,
 ):
-    os.chdir(working_folder)
-    ifd_exec = f"{SCHRODINGER_PATH}/ifd"
-    Path(f"{output_folder_name}").mkdir(parents=True, exist_ok=True)
-    ligands_path = os.path.abspath(ligands_path)
-    proteins_path = os.path.abspath(proteins_path)
+    template = TEMPLATE_ENV.get_template("ifd.inp")
 
-    ligands = glob.glob("{}/*.{}".format(ligands_path, "maegz"))
-    proteins = glob.glob("{}/*.{}".format(proteins_path, "mae"))
-    jump = "\n"
-    tab = "  "
-    n_ligands = len(ligands)
+    for prot_file in map(Path, prot_files):
+        prot_name = prot_file.stem
 
-    for protein in proteins:
-        os.chdir(f"{working_folder}/{output_folder_name}")
-        protein_name = os.path.basename(f"{protein}")
-        protein_basename = os.path.splitext(protein_name)[0]
-        Path(f"{protein_basename}").mkdir(parents=True, exist_ok=True)
-        shutil.copy(f"{protein}", f"{protein_basename}/")
-        lig_id = 0
-        for ligand in ligands:
-            lig_id += 1
-            os.chdir(f"{working_folder}/{output_folder_name}/{protein_basename}")
-            ligand_name = os.path.basename(f"{ligand}")
-            ligand_basename = os.path.splitext(ligand_name)[0]
-            if os.path.exists(f"{ligand_basename}"):
-                print(
-                    f"Folder {ligand_basename} already exists, calculation skipped ..."
-                )
+        prot_workdir = Path(workdir, prot_name)
+        prot_workdir.mkdir(parents=True, exist_ok=True)
+        shutil.copy(prot_file, prot_workdir)
+
+        for i, lig_file in enumerate(map(Path, lig_files)):
+            lig_name = lig_file.stem
+            lig_workdir = prot_workdir / lig_name
+
+            if lig_workdir.exists():
+                print(f"Skipping IFD for {prot_name}/{lig_name}... already exists")
                 continue
             else:
-                Path(f"{ligand_basename}").mkdir(parents=True, exist_ok=True)
+                lig_workdir.mkdir()
 
-            shutil.copy(f"{ligand}", f"{ligand_basename}/")
-            os.chdir(
-                f"{working_folder}/{output_folder_name}/{protein_basename}/{ligand_basename}"
-            )
-            # Write input for ifd by every ligand
-            with open(f"{ligand_basename}.inp", "w") as f:
-                f.write(f"INPUT_FILE ../{protein_name} {jump}")
-                f.write(f"STAGE GLIDE_DOCKING2 {jump}")
-                f.write(
-                    f'{tab}BINDING_SITE residues {bs_residues[f"{protein_name}"]}  {jump}'
+            shutil.copy(lig_file, lig_workdir)
+            with open(lig_workdir / f"{lig_name}.inp", "w") as io:
+                vars = dict(
+                    protfile=os.path.join("..", prot_file.name),
+                    ligfile=lig_file.name,
+                    resids=bs_residues[prot_file.name],
                 )
-                f.write(f"{tab}INNERBOX 10.0 {jump}")
-                f.write(f"{tab}OUTERBOX auto {jump}")
-                f.write(f"{tab}LIGAND_FILE {ligand_name} {jump}")
-                f.write(f"{tab}LIGANDS_TO_DOCK all {jump}")
-                f.write(f"{tab}GRIDGEN_RECEP_CCUT  0.25 {jump}")
-                f.write(f"{tab}GRIDGEN_RECEP_VSCALE 0.50 {jump}")
-                f.write(f"{tab}DOCKING_PRECISION SP {jump}")
-                f.write(f"{tab}DOCKING_LIG_CCUT  0.15 {jump}")
-                f.write(f"{tab}DOCKING_CV_CUTOFF  100.0 {jump}")
-                f.write(f"{tab}DOCKING_LIG_VSCALE 0.50 {jump}")
-                f.write(f"{tab}DOCKING_POSES_PER_LIG 10 {jump}")
-                f.write(f"{tab}DOCKING_RINGCONFCUT 2.5 {jump}")
-                f.write(f"{tab}DOCKING_AMIDE_MODE penal {jump}")
-                f.write(f"{jump}")
-                f.write(f"STAGE COMPILE_RESIDUE_LIST {jump}")
-                f.write(f"{tab}DISTANCE_CUTOFF 5.0 {jump}")
-                f.write(f"{jump}")
-                f.write(f"STAGE PRIME_REFINEMENT {jump}")
-                f.write(f"{tab}NUMBER_OF_PASSES 1 {jump}")
-                f.write(f"{tab}USE_MEMBRANE no {jump}")
-                f.write(f"{tab}OPLS_VERSION OPLS_2005 {jump}")
-                f.write(f"{jump}")
-                f.write(f"STAGE SORT_AND_FILTER {jump}")
-                f.write(f"{tab}POSE_FILTER r_psp_Prime_Energy {jump}")
-                f.write(f"{tab}POSE_KEEP 30.0 {jump}")
-                f.write(f"{jump}")
-                f.write(f"STAGE SORT_AND_FILTER {jump}")
-                f.write(f"{tab}POSE_FILTER r_psp_Prime_Energy {jump}")
-                f.write(f"{tab}POSE_KEEP 10# {jump}")
-                f.write(f"{jump}")
-                f.write(f"STAGE GLIDE_DOCKING2 {jump}")
-                f.write(f"{tab}BINDING_SITE ligand Z:999 {jump}")
-                f.write(f"{tab}INNERBOX 10.0 {jump}")
-                f.write(f"{tab}OUTERBOX auto {jump}")
-                f.write(f"{tab}LIGAND_FILE {ligand_name} {jump}")
-                f.write(f"{tab}LIGANDS_TO_DOCK self {jump}")
-                f.write(f"{tab}GRIDGEN_RECEP_CCUT  0.25 {jump}")
-                f.write(f"{tab}GRIDGEN_RECEP_VSCALE 1.00 {jump}")
-                f.write(f"{tab}DOCKING_PRECISION SP {jump}")
-                f.write(f"{tab}DOCKING_LIG_CCUT  0.15 {jump}")
-                f.write(f"{tab}DOCKING_CV_CUTOFF  0.0 {jump}")
-                f.write(f"{tab}DOCKING_LIG_VSCALE 0.80 {jump}")
-                f.write(f"{tab}DOCKING_POSES_PER_LIG 1 {jump}")
-                f.write(f"{tab}DOCKING_RINGCONFCUT 2.5 {jump}")
-                f.write(f"{tab}DOCKING_AMIDE_MODE penal {jump}")
-                f.write(f"{jump}")
-                f.write(f"STAGE SCORING {jump}")
-                f.write(f"{tab}SCORE_NAME r_psp_IFDScore {jump}")
-                f.write(f"{tab}TERM 1.0,r_i_glide_gscore,0 {jump}")
-                f.write(f"{tab}TERM 0.05,r_psp_Prime_Energy,1 {jump}")
-                f.write(f"{tab}REPORT_FILE report.csv {jump}")
-            # Running IFD
-            ifd_calculation = f"{ifd_exec} -NGLIDECPU {nglide_cpu} -NPRIMECPU {nprime_cpu} {ligand_basename}.inp -HOST localhost -SUBHOST localhost -TMPLAUNCHDIR -WAIT > /dev/null 2>&1"
-            print(
-                f"Running IFD for ligand {ligand_basename} in {protein_name} ({lig_id}/{n_ligands})..."
-            )
-            run_silent(ifd_calculation, ligand_basename)
+                io.write(template.render(vars))
+
+            os.chdir(lig_workdir)
+            cmd = f"{SCHRODINGER_PATH}/ifd -NGLIDECPU {glide_cpu} -NPRIMECPU {prime_cpu} {lig_name}.inp -HOST localhost -SUBHOST localhost -TMPLAUNCHDIR -WAIT > /dev/null 2>&1"
+            print(f"Running IFD for{prot_name}/{lig_name} ({i}/{len(lig_files)})...")
+            run_silent(cmd, lig_name)
 
 
 def run_mmgbsa(
