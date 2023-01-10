@@ -51,7 +51,6 @@ def parse_args(argv: List[str]) -> Tuple[Args, str]:
 
 def main(argv: List[str]) -> None:
     opts, dir = parse_args(argv)
-    basename = os.path.basename(dir)
 
     with open(opts.output, "w") as io:
         csvfile = csv.writer(io)
@@ -62,12 +61,14 @@ def main(argv: List[str]) -> None:
 
         maefiles = sorted(glob.glob(os.path.join(dir, "*.mae*")))
         for maefile in maefiles:
+            basename = os.path.basename(maefile)
+            basename = basename.replace(".mae", "").replace("-out", "")
             with StructureReader(maefile) as reader:
                 for i, structure in enumerate(reader):
                     resids = get_contact_residues(structure, opts.cutoff)
                     mask = [1 if resid in resids else 0 for resid in opts.resids]
 
-                    name: str = structure.property.get("s_m_name", basename)
+                    name: str = structure.property.get("s_m_title", basename)
                     ifdscore: float = structure.property["r_psp_IFDScore"]
                     dg_bind: float = structure.property["r_psp_MMGBSA_dG_Bind"]
                     csvfile.writerow([name, i, ifdscore, dg_bind] + mask)
