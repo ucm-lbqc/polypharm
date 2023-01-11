@@ -137,6 +137,8 @@ def report_cross(
 ) -> pd.DataFrame:
     results: List[pd.DataFrame] = []
     for prot_dir in glob.glob(os.path.join(output_dir, "*")):
+        if not os.path.isdir(prot_dir):
+            continue
         prot_name = os.path.basename(prot_dir)
         df = report(
             output_dir=prot_dir,
