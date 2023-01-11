@@ -290,16 +290,14 @@ def transient_dir(path: PathLike):
 
 
 def analysis(
-    working_folder: str,
-    mmgbsa_output_path: str,
+    workdir: str,
     bs_residues: Dict[str, str],
     radius: float,
-    output_folder_name: str,
     rank_criteria: List[RankingCriterion] = [
         RankingCriterion.NORMALIZED_CONTACTS,
         RankingCriterion.TOTAL_SCORE,
     ],
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    results = report_cross(working_folder, bs_residues, radius)
+    results = report_cross(workdir, bs_residues, radius)
     cross_results = rank_poses_cross(results, rank_criteria)
     return results, cross_results
