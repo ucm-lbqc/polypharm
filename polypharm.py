@@ -63,7 +63,6 @@ def rank_poses(
         RankingCriterion.NORMALIZED_CONTACTS,
         RankingCriterion.TOTAL_SCORE,
     ],
-    limit: Optional[int] = None,
 ) -> pd.DataFrame:
     df = df.copy(deep=True)
     df["INT_NORM"] = normalize(df["INT"])
@@ -78,9 +77,6 @@ def rank_poses(
     df.reset_index(drop=True, inplace=True)
     df["RANK"] = list(range(len(df)))
 
-    if limit:
-        top_molecules = df["NAME"].unique()[:limit]
-        df = df[df["NAME"].isin(top_molecules)]
 
     return df
 
@@ -91,10 +87,9 @@ def rank_poses_cross(
         RankingCriterion.NORMALIZED_CONTACTS,
         RankingCriterion.TOTAL_SCORE,
     ],
-    limit: Optional[int] = None,
 ) -> pd.DataFrame:
     results = pd.concat(
-        rank_poses(df, criteria, limit) for _, df in results.groupby("PROTEIN")
+        rank_poses(df, criteria) for _, df in results.groupby("PROTEIN")
     )
 
     common_names: List[str] = set.intersection(
