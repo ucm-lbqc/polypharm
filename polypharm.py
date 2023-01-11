@@ -163,7 +163,7 @@ def run_silent(
 
         cmd.append(option)
         if not isinstance(value, bool):
-            cmd.append(repr(value))
+            cmd.append(str(value))
     subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 
