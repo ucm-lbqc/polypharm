@@ -300,11 +300,6 @@ def analysis(
         RankingCriterion.TOTAL_SCORE,
     ],
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    os.chdir(working_folder)
-    Path(f"{output_folder_name}").mkdir(parents=True, exist_ok=True)
-    mmgbsa_output_path = os.path.abspath(mmgbsa_output_path)
-    proteins = glob.glob(f"{mmgbsa_output_path}/**")
-
     results = report_cross(working_folder, bs_residues, radius)
     cross_results = rank_poses_cross(results, rank_criteria)
     return results, cross_results
