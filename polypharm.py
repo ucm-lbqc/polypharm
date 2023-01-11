@@ -58,7 +58,7 @@ def ranking_poses(
         RankingCriterion.NORMALIZED_CONTACTS,
         RankingCriterion.TOTAL_SCORE,
     ],
-    max_rank: Optional[int] = None,
+    limit: Optional[int] = None,
 ) -> Tuple[pd.DataFrame, set]:
     # Interactions and energy normalization
     best_dgbind = df.DGBIND.min()
@@ -112,7 +112,7 @@ def ranking_poses(
     n = 0
     for i in range(len(df)):
         compound = df.loc[i, "NAME"].split("-out")[0]
-        if max_rank and len(compound_set) == max_rank:
+        if limit and len(compound_set) == limit:
             break
         if compound not in compound_set:
             n += 1
