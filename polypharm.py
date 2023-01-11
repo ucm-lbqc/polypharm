@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, Generator, List, Optional, Tuple, Union
 
 import jinja2
 import pandas as pd
@@ -209,7 +209,7 @@ def run_ifd_cross(
     workdir: PathLike = "ifd",
     glide_cpus: int = 2,
     prime_cpus: int = 2,
-):
+) -> None:
     for prot_file in map(Path, prot_files):
         prot_name = prot_file.stem
 
@@ -259,7 +259,7 @@ def run_mmgbsa_cross(
     ifd_files: List[PathLike],
     workdir: PathLike,
     cpus: int = 2,
-):
+) -> None:
     for i, ifd_file in enumerate(map(Path, ifd_files)):
         ifd_file = ifd_file.absolute()
         prot_name = ifd_file.parent.parts[-1]
@@ -280,7 +280,7 @@ def run_mmgbsa_cross(
 
 
 @contextlib.contextmanager
-def transient_dir(path: PathLike):
+def transient_dir(path: PathLike) -> Generator[None, None, None]:
     cwd = os.getcwd()
     try:
         os.chdir(path)
