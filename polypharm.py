@@ -28,9 +28,6 @@ if not SCHRODINGER_PATH:
 def ranking_poses(
     df: pd.DataFrame, order: str = "INT_NORM-NORMT", max_rank: int = 100
 ) -> Tuple[pd.DataFrame, set]:
-    df["INT"] = df.iloc[:, 3:].sum(axis=1)
-    df = df.sort_values(by=["INT"], ascending=False)
-
     # Interactions and energy normalization
     best_dgbind = df.DGBIND.min()
     worst_dgbind = df.DGBIND.max()

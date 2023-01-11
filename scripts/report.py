@@ -55,7 +55,7 @@ def main(argv: List[str]) -> None:
     with open(opts.output, "w") as io:
         csvfile = csv.writer(io)
 
-        headers = ["NAME", "INDEX", "IFDSCORE", "DGBIND"]
+        headers = ["NAME", "INDEX", "IFDSCORE", "DGBIND", "INT"]
         headers.extend([f"{ch.upper()}:{resnum}" for ch, resnum in opts.resids])
         csvfile.writerow(headers)
 
@@ -66,12 +66,16 @@ def main(argv: List[str]) -> None:
             with StructureReader(maefile) as reader:
                 for i, structure in enumerate(reader):
                     resids = get_contact_residues(structure, opts.cutoff)
-                    mask = [1 if resid in resids else 0 for resid in opts.resids]
+                    contact_mask = [int(resid in resids) for resid in opts.resids]
+                    total_contacts = sum(contact_mask)
 
                     name: str = structure.property.get("s_m_title", basename)
                     ifdscore: float = structure.property["r_psp_IFDScore"]
                     dg_bind: float = structure.property["r_psp_MMGBSA_dG_Bind"]
-                    csvfile.writerow([name, i, ifdscore, dg_bind] + mask)
+
+                    row = [name, i, ifdscore, dg_bind, total_contacts]
+                    row.extend(contact_mask)
+                    csvfile.writerow(row)
 
 
 if __name__ == "__main__":
