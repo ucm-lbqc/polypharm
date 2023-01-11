@@ -25,45 +25,9 @@ if not SCHRODINGER_PATH:
     exit(1)
 
 
-def ranking_poses(df: pd.DataFrame, max_rank: int) -> Tuple[pd.DataFrame, set]:
-    df_rank = pd.DataFrame()
-    compound_set = set()
-    n = 0
-    for i in range(len(df)):
-        compound = df.loc[i, "NAME"].split("-out")[0]
-        if len(compound_set) == max_rank:
-            break
-        if compound not in compound_set:
-            n += 1
-            compound_set.add(compound)
-            name = df.loc[i, "NAME"]
-            int = df.loc[i, "INT"]
-            int_norm = df.loc[i, "INT_NORM"]
-            norm_dgbind = df.loc[i, "DGBIND_NORM"]
-            dgbind = df.loc[i, "DGBIND"]
-            norm_total = df.loc[i, "NORMT"]
-            new_row = {
-                "NAME": name,
-                "DGBIND": dgbind,
-                "INT": int,
-                "DGBIND_NORM": norm_dgbind,
-                "INT_NORM": int_norm,
-                "NORMT": norm_total,
-                "RANK": n,
-            }
-            new_row = pd.DataFrame(new_row, index=[0])
-            df_rank = pd.concat([df_rank, new_row], ignore_index=True)
-            df_rank.index = df_rank.index + 1
-            df_rank.index.name = "POSITION"
-    return df_rank, compound_set
-
-
-def reading_raw_data(
-    csvfile: str,
-    order: str = "INT_NORM-NORMT",
-) -> pd.DataFrame:
-    print("Reading data...")
-    df: pd.DataFrame = pd.read_csv(csvfile)
+def ranking_poses(
+    df: pd.DataFrame, order: str = "INT_NORM-NORMT", max_rank: int = 100
+) -> Tuple[pd.DataFrame, set]:
     df["INT"] = df.iloc[:, 3:].sum(axis=1)
     df = df.sort_values(by=["INT"], ascending=False)
 
@@ -119,9 +83,48 @@ def reading_raw_data(
     if order == "INT-DGBIND_NORM":
         df = df.sort_values(by=["INT", "DGBIND_NORM"], ascending=True)
 
-    # Replace -out-out by _out_out to ignore the "-out-out" words produced by the ifd and MMGBSA output
-    # df["NAME"] = df["NAME"].str.replace("-out", "*out")
+    # Replace -out-out by _out_out to ignore the "-out-out" words
+    # produced by the ifd and MMGBSA output df["NAME"] =
+    # df["NAME"].str.replace("-out", "*out")
     df.reset_index(drop=True, inplace=True)
+
+    df_rank = pd.DataFrame()
+    compound_set = set()
+    n = 0
+    for i in range(len(df)):
+        compound = df.loc[i, "NAME"].split("-out")[0]
+        if len(compound_set) == max_rank:
+            break
+        if compound not in compound_set:
+            n += 1
+            compound_set.add(compound)
+            name = df.loc[i, "NAME"]
+            int = df.loc[i, "INT"]
+            int_norm = df.loc[i, "INT_NORM"]
+            norm_dgbind = df.loc[i, "DGBIND_NORM"]
+            dgbind = df.loc[i, "DGBIND"]
+            norm_total = df.loc[i, "NORMT"]
+            new_row = {
+                "NAME": name,
+                "DGBIND": dgbind,
+                "INT": int,
+                "DGBIND_NORM": norm_dgbind,
+                "INT_NORM": int_norm,
+                "NORMT": norm_total,
+                "RANK": n,
+            }
+            new_row = pd.DataFrame(new_row, index=[0])
+            df_rank = pd.concat([df_rank, new_row], ignore_index=True)
+            df_rank.index = df_rank.index + 1
+            df_rank.index.name = "POSITION"
+    return df_rank, compound_set
+
+
+def reading_raw_data(
+    csvfile: str,
+) -> pd.DataFrame:
+    print("Reading data...")
+    df: pd.DataFrame = pd.read_csv(csvfile)
     return df
 
 
@@ -414,8 +417,8 @@ def analysis(
         )
 
         # ranking poses of every system.
-        df = reading_raw_data(csvfile, order)
-        data_rank, data_set = ranking_poses(df=df, max_rank=100)
+        df = reading_raw_data(csvfile)
+        data_rank, data_set = ranking_poses(df, order, max_rank=100)
         csv_data[f"{protein_name}_rank"] = data_rank
         csv_data[f"{protein_name}_set"] = data_set
         print(" ")
