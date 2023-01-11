@@ -1,4 +1,5 @@
 import contextlib
+import enum
 import glob
 import os
 import shutil
@@ -7,12 +8,13 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
 
-import pandas as pd
 import jinja2
+import pandas as pd
 
 pd.options.display.max_rows = 100
 
 PathLike = Union[str, Path]
+
 
 SCHRODINGER_PATH = os.getenv("SCHRODINGER_PATH")
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -25,8 +27,38 @@ if not SCHRODINGER_PATH:
     exit(1)
 
 
+class RankingCriterion(enum.Enum):
+    CONTACTS = 1
+    NORMALIZED_CONTACTS = 2
+    BINDING_ENERGY = 3
+    NORMALIZED_BINDING_ENERGY = 4
+    TOTAL_SCORE = 5
+
+    def ascending(self) -> bool:
+        return self in [
+            self.NORMALIZED_CONTACTS,
+            self.NORMALIZED_BINDING_ENERGY,
+            self.BINDING_ENERGY,
+            self.TOTAL_SCORE,
+        ]
+
+
+RANKING_COLUMN_MAP = {
+    RankingCriterion.CONTACTS: "INT",
+    RankingCriterion.NORMALIZED_CONTACTS: "INT_NORM",
+    RankingCriterion.BINDING_ENERGY: "DGBIND",
+    RankingCriterion.NORMALIZED_BINDING_ENERGY: "DGBIND_NORM",
+    RankingCriterion.TOTAL_SCORE: "NORMT",
+}
+
+
 def ranking_poses(
-    df: pd.DataFrame, order: str = "INT_NORM-NORMT", max_rank: int = 100
+    df: pd.DataFrame,
+    criteria: List[RankingCriterion] = [
+        RankingCriterion.NORMALIZED_CONTACTS,
+        RankingCriterion.TOTAL_SCORE,
+    ],
+    max_rank: int = 100,
 ) -> Tuple[pd.DataFrame, set]:
     # Interactions and energy normalization
     best_dgbind = df.DGBIND.min()
@@ -66,23 +98,13 @@ def ranking_poses(
             ),
             axis=1,
         )
-
     df["NORMT"] = df.apply(lambda row: row.INT_NORM + row.DGBIND_NORM, axis=1)
 
-    if order == "INT-NORMT":
-        df = df.sort_values(by=["INT", "NORMT"], ascending=False)
-    if order == "INT_NORM-NORMT":
-        df = df.sort_values(by=["INT_NORM", "NORMT"], ascending=False)
-    if order == "DGBIND_NORM":
-        df = df.sort_values(by=["DGBIND_NORM"], ascending=True)
-    if order == "DGBIND":
-        df = df.sort_values(by=["DGBIND"], ascending=True)
-    if order == "INT-DGBIND_NORM":
-        df = df.sort_values(by=["INT", "DGBIND_NORM"], ascending=True)
-
-    # Replace -out-out by _out_out to ignore the "-out-out" words
-    # produced by the ifd and MMGBSA output df["NAME"] =
-    # df["NAME"].str.replace("-out", "*out")
+    df.sort_values(
+        by=[RANKING_COLUMN_MAP[criterion] for criterion in criteria],
+        ascending=[criterion.ascending() for criterion in criteria],
+        inplace=True,
+    )
     df.reset_index(drop=True, inplace=True)
 
     df_rank = pd.DataFrame()
@@ -391,7 +413,10 @@ def analysis(
     bs_residues: Dict[str, str],
     radius: float,
     output_folder_name: str,
-    order: str = "INT_NORM-NORMT",
+    order: List[RankingCriterion] = [
+        RankingCriterion.NORMALIZED_CONTACTS,
+        RankingCriterion.TOTAL_SCORE,
+    ],
 ):
     os.chdir(working_folder)
     Path(f"{output_folder_name}").mkdir(parents=True, exist_ok=True)
