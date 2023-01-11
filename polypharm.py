@@ -362,6 +362,21 @@ def run_ifd_cross(
                 )
 
 
+def run_mmgbsa(ifd_file: PathLike, cpus: int = 2) -> None:
+    run_silent(
+        os.path.join(SCHRODINGER_PATH, "prime_mmgbsa"),
+        str(ifd_file),
+        ligand="(res.pt UNK)",
+        job_type="REAL_MIN",
+        out_type="COMPLEX",
+        csv_output="yes",
+        JOBNAME=Path(ifd_file).stem.replace("-out", ""),
+        HOST=f"localhost:{cpus}",
+        WAIT=True,
+        use_single_dash=True,
+    )
+
+
 def run_mmgbsa_cross(
     ifd_files: List[PathLike],
     workdir: PathLike,
@@ -383,18 +398,7 @@ def run_mmgbsa_cross(
 
         print(f"Running MM/GBSA for {jobid} [{i}/{len(ifd_files)}]...")
         with transient_dir(prot_workdir):
-            run_silent(
-                os.path.join(SCHRODINGER_PATH, "prime_mmgbsa"),
-                str(ifd_file),
-                ligand="(res.pt UNK)",
-                job_type="REAL_MIN",
-                out_type="COMPLEX",
-                csv_output="yes",
-                j=lig_name,
-                HOST=f"localhost:{cpus}",
-                WAIT=True,
-                use_single_dash=True,
-            )
+            run_mmgbsa(ifd_file, cpus)
 
 
 @contextlib.contextmanager
