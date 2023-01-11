@@ -85,7 +85,18 @@ def rank_poses(
     return df
 
 
-def rank_poses_cross(results: pd.DataFrame) -> pd.DataFrame:
+def rank_poses_cross(
+    results: pd.DataFrame,
+    criteria: List[RankingCriterion] = [
+        RankingCriterion.NORMALIZED_CONTACTS,
+        RankingCriterion.TOTAL_SCORE,
+    ],
+    limit: Optional[int] = None,
+) -> pd.DataFrame:
+    results = pd.concat(
+        rank_poses(df, criteria, limit) for _, df in results.groupby("PROTEIN")
+    )
+
     common_names: List[str] = set.intersection(
         *[set(names) for names in results.groupby("PROTEIN")["NAME"].unique()]
     )
@@ -124,11 +135,6 @@ def report_cross(
     output_dir: PathLike,
     bs_residues: Dict[str, str],
     contact_cutoff: float,
-    criteria: List[RankingCriterion] = [
-        RankingCriterion.NORMALIZED_CONTACTS,
-        RankingCriterion.TOTAL_SCORE,
-    ],
-    limit: Optional[int] = None,
 ) -> pd.DataFrame:
     results: List[pd.DataFrame] = []
     for prot_dir in glob.glob(os.path.join(output_dir, "*")):
@@ -139,7 +145,6 @@ def report_cross(
             resids=bs_residues[f"{prot_name}.mae"],
             contact_cutoff=contact_cutoff,
         )
-        df = rank_poses(df, criteria, limit)
         df["PROTEIN"] = prot_name
         results.append(df)
     return pd.concat(results)
@@ -300,6 +305,6 @@ def analysis(
     mmgbsa_output_path = os.path.abspath(mmgbsa_output_path)
     proteins = glob.glob(f"{mmgbsa_output_path}/**")
 
-    results = report_cross(working_folder, bs_residues, radius, rank_criteria)
-    cross_results = rank_poses_cross(results)
+    results = report_cross(working_folder, bs_residues, radius)
+    cross_results = rank_poses_cross(results, rank_criteria)
     return results, cross_results
