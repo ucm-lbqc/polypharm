@@ -120,6 +120,31 @@ def report(
     return pd.read_csv(csvfile)
 
 
+def report_cross(
+    output_dir: PathLike,
+    bs_residues: Dict[str, str],
+    contact_cutoff: float,
+    criteria: List[RankingCriterion] = [
+        RankingCriterion.NORMALIZED_CONTACTS,
+        RankingCriterion.TOTAL_SCORE,
+    ],
+    limit: Optional[int] = None,
+) -> pd.DataFrame:
+    results: List[pd.DataFrame] = []
+    for prot_dir in glob.glob(os.path.join(output_dir, "*")):
+        prot_name = os.path.basename(prot_dir)
+        df = report(
+            csvfile=os.path.join(prot_dir, f"{prot_name}.csv"),
+            output_dir=prot_dir,
+            resids=bs_residues[f"{prot_name}.mae"],
+            contact_cutoff=contact_cutoff,
+        )
+        df = rank_poses(df, criteria, limit)
+        df["PROTEIN"] = prot_name
+        results.append(df)
+    return pd.concat(results)
+
+
 def run_silent(
     program: str,
     *args: str,
@@ -275,28 +300,6 @@ def analysis(
     mmgbsa_output_path = os.path.abspath(mmgbsa_output_path)
     proteins = glob.glob(f"{mmgbsa_output_path}/**")
 
-    # Create dict of every system
-    results: List[pd.DataFrame] = []
-    for protein in proteins:
-        os.chdir(f"{working_folder}/{output_folder_name}")
-        protein_name = os.path.basename(f"{protein}")
-
-        Path(f"{protein_name}").mkdir(parents=True, exist_ok=True)
-        os.chdir(f"{working_folder}/{output_folder_name}/{protein_name}")
-
-        print(f"Analizing {protein_name}")
-        df = report(
-            csvfile=os.path.join(
-                working_folder, output_folder_name, f"{protein_name}.csv"
-            ),
-            output_dir=os.path.join(mmgbsa_output_path, protein_name),
-            resids=bs_residues[f"{protein_name}.mae"],
-            contact_cutoff=radius,
-        )
-        df["PROTEIN"] = protein_name
-        df = rank_poses(df, rank_criteria)
-        results.append(df)
-
-    df = pd.concat(results)
-    cross_df = rank_poses_cross(df)
-    return df, cross_df
+    results = report_cross(working_folder, bs_residues, radius, rank_criteria)
+    cross_results = rank_poses_cross(results)
+    return results, cross_results
