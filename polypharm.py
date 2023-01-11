@@ -24,7 +24,7 @@ TEMPLATE_ENV = jinja2.Environment(
 
 if not SCHRODINGER_PATH:
     print("error: Environment variable SCHRODINGER_PATH is not set", file=sys.stderr)
-    exit(1)
+    sys.exit(1)
 
 
 class RankingCriterion(enum.Enum):
