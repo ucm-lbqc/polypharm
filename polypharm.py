@@ -117,15 +117,14 @@ def rank_poses_cross(
     return pd.DataFrame(rows).sort_values("SUM_NORMT", ascending=True)
 
 
-def report(
-    csvfile: PathLike, output_dir: PathLike, resids: str, contact_cutoff: float
-) -> pd.DataFrame:
+def report(output_dir: PathLike, resids: str, contact_cutoff: float) -> pd.DataFrame:
+    csvfile = os.path.join(output_dir, f"{os.path.basename(output_dir)}.csv")
     run_silent(
         os.path.join(SCHRODINGER_PATH, "run"),
         os.path.join(SCRIPT_DIR, "scripts", "report.py"),
         str(output_dir),
         cutoff=contact_cutoff,
-        output=str(csvfile),
+        output=csvfile,
         residues=resids,
     )
     return pd.read_csv(csvfile)
@@ -140,7 +139,6 @@ def report_cross(
     for prot_dir in glob.glob(os.path.join(output_dir, "*")):
         prot_name = os.path.basename(prot_dir)
         df = report(
-            csvfile=os.path.join(prot_dir, f"{prot_name}.csv"),
             output_dir=prot_dir,
             resids=bs_residues[f"{prot_name}.mae"],
             contact_cutoff=contact_cutoff,
