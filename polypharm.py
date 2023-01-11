@@ -57,7 +57,7 @@ def normalize(series: pd.Series) -> pd.Series:
     return (series - min_value) / (series.max() - min_value)
 
 
-def ranking_poses(
+def rank_poses(
     df: pd.DataFrame,
     criteria: List[RankingCriterion] = [
         RankingCriterion.NORMALIZED_CONTACTS,
@@ -392,7 +392,7 @@ def analysis(
             contact_cutoff=radius,
         )
 
-        data_rank = ranking_poses(df, order)
+        data_rank = rank_poses(df, order)
         data_set: Set[str] = set(data_rank["NAME"].unique())
         csv_data[f"{protein_name}_rank"] = data_rank
         csv_data[f"{protein_name}_set"] = data_set
