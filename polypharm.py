@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 import jinja2
 import pandas as pd
@@ -52,6 +52,11 @@ RANKING_COLUMN_MAP = {
 }
 
 
+def normalize(series: pd.Series) -> pd.Series:
+    min_value = series.min()
+    return (series - min_value) / (series.max() - min_value)
+
+
 def ranking_poses(
     df: pd.DataFrame,
     criteria: List[RankingCriterion] = [
@@ -59,46 +64,11 @@ def ranking_poses(
         RankingCriterion.TOTAL_SCORE,
     ],
     limit: Optional[int] = None,
-) -> Tuple[pd.DataFrame, set]:
-    # Interactions and energy normalization
-    best_dgbind = df.DGBIND.min()
-    worst_dgbind = df.DGBIND.max()
-    worst_int = df.INT.min()
-    best_int = df.INT.max()
-    print(f"Better dGbind: {df.DGBIND.min()}")
-    print(f"Worst dGbind: {df.DGBIND.max()}")
-    print(f"Better interactions number: {best_int}")
-    print(f"Worst interactions number: {worst_int}")
-
-    df["INT_NORM"] = df.apply(
-        lambda row: (row.INT - worst_int) / (best_int - worst_int), axis=1
-    )
-    if worst_dgbind < 0 and best_dgbind < 0:
-        worst_dgbind = abs(worst_dgbind)
-        best_dgbind = abs(best_dgbind)
-        df["DGBIND_NORM"] = df.apply(
-            lambda row: (abs(row.DGBIND) - worst_dgbind) / (best_dgbind - worst_dgbind),
-            axis=1,
-        )
-
-    elif best_dgbind < 0 and worst_dgbind > 0:
-        worst_dgbind = worst_dgbind
-        best_dgbind = abs(best_dgbind)
-        df["DGBIND_NORM"] = df.apply(
-            lambda row: (abs(row.DGBIND) - worst_dgbind) / (best_dgbind - worst_dgbind),
-            axis=1,
-        )
-
-    elif best_dgbind >= 0 and worst_dgbind > 0:
-        worst_dgbind = worst_dgbind
-        best_dgbind = best_dgbind
-        df["DGBIND_NORM"] = df.apply(
-            lambda row: (
-                ((row.DGBIND) - best_dgbind) / (best_dgbind - worst_dgbind) * -1 + 1
-            ),
-            axis=1,
-        )
-    df["NORMT"] = df.apply(lambda row: row.INT_NORM + row.DGBIND_NORM, axis=1)
+) -> pd.DataFrame:
+    df = df.copy(deep=True)
+    df["INT_NORM"] = normalize(df["INT"])
+    df["DGBIND_NORM"] = 1 - normalize(df["DGBIND"])
+    df["NORMT"] = df["INT_NORM"] + df["DGBIND_NORM"]
 
     df.sort_values(
         by=[RANKING_COLUMN_MAP[criterion] for criterion in criteria],
@@ -106,37 +76,13 @@ def ranking_poses(
         inplace=True,
     )
     df.reset_index(drop=True, inplace=True)
+    df["RANK"] = list(range(len(df)))
 
-    df_rank = pd.DataFrame()
-    compound_set = set()
-    n = 0
-    for i in range(len(df)):
-        compound = df.loc[i, "NAME"].split("-out")[0]
-        if limit and len(compound_set) == limit:
-            break
-        if compound not in compound_set:
-            n += 1
-            compound_set.add(compound)
-            name = df.loc[i, "NAME"]
-            int = df.loc[i, "INT"]
-            int_norm = df.loc[i, "INT_NORM"]
-            norm_dgbind = df.loc[i, "DGBIND_NORM"]
-            dgbind = df.loc[i, "DGBIND"]
-            norm_total = df.loc[i, "NORMT"]
-            new_row = {
-                "NAME": name,
-                "DGBIND": dgbind,
-                "INT": int,
-                "DGBIND_NORM": norm_dgbind,
-                "INT_NORM": int_norm,
-                "NORMT": norm_total,
-                "RANK": n,
-            }
-            new_row = pd.DataFrame(new_row, index=[0])
-            df_rank = pd.concat([df_rank, new_row], ignore_index=True)
-            df_rank.index = df_rank.index + 1
-            df_rank.index.name = "POSITION"
-    return df_rank, compound_set
+    if limit:
+        top_molecules = df["NAME"].unique()[:limit]
+        df = df[df["NAME"].isin(top_molecules)]
+
+    return df
 
 
 def report(
@@ -446,7 +392,8 @@ def analysis(
             contact_cutoff=radius,
         )
 
-        data_rank, data_set = ranking_poses(df, order)
+        data_rank = ranking_poses(df, order)
+        data_set: Set[str] = set(data_rank["NAME"].unique())
         csv_data[f"{protein_name}_rank"] = data_rank
         csv_data[f"{protein_name}_set"] = data_set
         print(" ")
