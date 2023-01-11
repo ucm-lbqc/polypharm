@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import jinja2
 import pandas as pd
@@ -58,7 +58,7 @@ def ranking_poses(
         RankingCriterion.NORMALIZED_CONTACTS,
         RankingCriterion.TOTAL_SCORE,
     ],
-    max_rank: int = 100,
+    max_rank: Optional[int] = None,
 ) -> Tuple[pd.DataFrame, set]:
     # Interactions and energy normalization
     best_dgbind = df.DGBIND.min()
@@ -112,7 +112,7 @@ def ranking_poses(
     n = 0
     for i in range(len(df)):
         compound = df.loc[i, "NAME"].split("-out")[0]
-        if len(compound_set) == max_rank:
+        if max_rank and len(compound_set) == max_rank:
             break
         if compound not in compound_set:
             n += 1
@@ -446,7 +446,7 @@ def analysis(
             contact_cutoff=radius,
         )
 
-        data_rank, data_set = ranking_poses(df, order, max_rank=100)
+        data_rank, data_set = ranking_poses(df, order)
         csv_data[f"{protein_name}_rank"] = data_rank
         csv_data[f"{protein_name}_set"] = data_set
         print(" ")
