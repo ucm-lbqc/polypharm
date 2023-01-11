@@ -37,6 +37,7 @@ def parse_args(argv: List[str]) -> Tuple[Args, str]:
     parser.add_argument(
         "-r",
         "--residues",
+        dest="resids",
         required=True,
         help="""
         Comma-separated list of residue ids (CHAIN:NUMBER) to report, e.g.,
