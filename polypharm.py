@@ -363,7 +363,7 @@ def analysis(
     bs_residues: Dict[str, str],
     radius: float,
     output_folder_name: str,
-    order: List[RankingCriterion] = [
+    rank_criteria: List[RankingCriterion] = [
         RankingCriterion.NORMALIZED_CONTACTS,
         RankingCriterion.TOTAL_SCORE,
     ],
@@ -392,7 +392,7 @@ def analysis(
             contact_cutoff=radius,
         )
 
-        data_rank = rank_poses(df, order)
+        data_rank = rank_poses(df, rank_criteria)
         data_set: Set[str] = set(data_rank["NAME"].unique())
         csv_data[f"{protein_name}_rank"] = data_rank
         csv_data[f"{protein_name}_set"] = data_set
