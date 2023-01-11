@@ -85,7 +85,7 @@ def rank_poses(
     return df
 
 
-def ranking_compounds(results: pd.DataFrame) -> pd.DataFrame:
+def rank_poses_cross(results: pd.DataFrame) -> pd.DataFrame:
     common_names: List[str] = set.intersection(
         *[set(names) for names in results.groupby("PROTEIN")["NAME"].unique()]
     )
@@ -298,5 +298,5 @@ def analysis(
         results.append(df)
 
     df = pd.concat(results)
-    cross_df = ranking_compounds(df)
+    cross_df = rank_poses_cross(df)
     return df, cross_df
