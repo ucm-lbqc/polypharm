@@ -120,12 +120,18 @@ def ranking_poses(
     return df_rank, compound_set
 
 
-def reading_raw_data(
-    csvfile: str,
+def report(
+    csvfile: PathLike, output_dir: PathLike, resids: str, contact_cutoff: float
 ) -> pd.DataFrame:
-    print("Reading data...")
-    df: pd.DataFrame = pd.read_csv(csvfile)
-    return df
+    run_silent(
+        os.path.join(SCHRODINGER_PATH, "run"),
+        os.path.join(SCRIPT_DIR, "scripts", "report.py"),
+        str(output_dir),
+        cutoff=contact_cutoff,
+        output=str(csvfile),
+        residues=resids,
+    )
+    return pd.read_csv(csvfile)
 
 
 def ranking_compounds_old(
@@ -400,24 +406,20 @@ def analysis(
     for protein in proteins:
         os.chdir(f"{working_folder}/{output_folder_name}")
         protein_name = os.path.basename(f"{protein}")
-        resids = bs_residues[f"{protein_name}.mae"]
 
         Path(f"{protein_name}").mkdir(parents=True, exist_ok=True)
         os.chdir(f"{working_folder}/{output_folder_name}/{protein_name}")
 
         print(f"Analizing {protein_name}")
-        csvfile = f"{working_folder}/{output_folder_name}/{protein_name}.csv"
-        run_silent(
-            os.path.join(SCHRODINGER_PATH, "run"),
-            os.path.join(SCRIPT_DIR, "scripts", "report.py"),
-            os.path.join(mmgbsa_output_path, protein_name),
-            cutoff=radius,
-            output=csvfile,
-            residues=resids,
+        df = report(
+            csvfile=os.path.join(
+                working_folder, output_folder_name, f"{protein_name}.csv"
+            ),
+            output_dir=os.path.join(mmgbsa_output_path, protein_name),
+            resids=bs_residues[f"{protein_name}.mae"],
+            contact_cutoff=radius,
         )
 
-        # ranking poses of every system.
-        df = reading_raw_data(csvfile)
         data_rank, data_set = ranking_poses(df, order, max_rank=100)
         csv_data[f"{protein_name}_rank"] = data_rank
         csv_data[f"{protein_name}_set"] = data_set
