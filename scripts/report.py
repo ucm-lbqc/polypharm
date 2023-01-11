@@ -54,7 +54,7 @@ def main(argv: List[str]) -> None:
     opts, dir = parse_args(argv)
 
     with open(opts.output, "w") as io:
-        csvfile = csv.writer(io)
+        csvfile = csv.writer(io, lineterminator="\n")
 
         headers = ["NAME", "INDEX", "IFDSCORE", "DGBIND", "INT"]
         headers.extend([f"{ch.upper()}:{resnum}" for ch, resnum in opts.resids])
