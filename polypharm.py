@@ -164,12 +164,7 @@ def run_silent(
         cmd.append(option)
         if not isinstance(value, bool):
             cmd.append(repr(value))
-
-    with open(os.devnull, "w") as io:
-        try:
-            subprocess.run(cmd, check=True, stdout=io, stderr=io)
-        except subprocess.CalledProcessError:
-            print("Error occured executing {}".format(" ".join(cmd)), file=sys.stderr)
+    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 
 def run_ifd(
