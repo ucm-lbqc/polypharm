@@ -140,7 +140,7 @@ def report_cross(
         prot_name = os.path.basename(prot_dir)
         df = report(
             output_dir=prot_dir,
-            resids=bs_residues[f"{prot_name}.mae"],
+            resids=bs_residues[prot_name],
             contact_cutoff=contact_cutoff,
         )
         df["PROTEIN"] = prot_name
