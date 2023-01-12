@@ -33,12 +33,7 @@ class RankingCriterion(enum.Enum):
     TOTAL_SCORE = 5
 
     def ascending(self) -> bool:
-        return self in [
-            self.NORMALIZED_CONTACTS,
-            self.NORMALIZED_BINDING_ENERGY,
-            self.BINDING_ENERGY,
-            self.TOTAL_SCORE,
-        ]
+        return self == self.BINDING_ENERGY
 
 
 RANKING_COLUMN_MAP = {
