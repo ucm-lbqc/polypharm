@@ -299,17 +299,3 @@ def transient_dir(path: PathLike) -> Generator[None, None, None]:
         yield
     finally:
         os.chdir(cwd)
-
-
-def analysis(
-    workdir: str,
-    bs_residues: Dict[str, str],
-    radius: float,
-    rank_criteria: List[RankingCriterion] = [
-        RankingCriterion.NORMALIZED_CONTACTS,
-        RankingCriterion.TOTAL_SCORE,
-    ],
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    results = report_cross(workdir, bs_residues, radius)
-    cross_results = rank_poses_cross(results, rank_criteria)
-    return results, cross_results
