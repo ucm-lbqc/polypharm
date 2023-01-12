@@ -11,8 +11,6 @@ from typing import Dict, Generator, List, Optional, Tuple, Union
 import jinja2
 import pandas as pd
 
-pd.options.display.max_rows = 100
-
 PathLike = Union[str, Path]
 
 
