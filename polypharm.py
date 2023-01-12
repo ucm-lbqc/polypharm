@@ -152,7 +152,7 @@ def report_cross(
             contact_cutoff=contact_cutoff,
             use_existing=use_existing,
         )
-        df["PROTEIN"] = prot_name
+        df.insert(0, "PROTEIN", [prot_name for _ in range(len(df))])
         results.append(df)
     return pd.concat(results)
 
