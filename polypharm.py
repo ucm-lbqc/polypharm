@@ -69,14 +69,23 @@ def rank_poses(
     df["DGBIND_NORM"] = 1 - normalize(df["DGBIND"])
     df["NORMT"] = df["INT_NORM"] + df["DGBIND_NORM"]
 
+    sort_fields = [RANKING_COLUMN_MAP[criterion] for criterion in criteria]
+    ascending = [criterion.ascending() for criterion in criteria]
+    if "PROTEIN" in df.columns:
+        sort_fields = ["PROTEIN"] + sort_fields
+        ascending = [True] + ascending
     df.sort_values(
-        by=[RANKING_COLUMN_MAP[criterion] for criterion in criteria],
-        ascending=[criterion.ascending() for criterion in criteria],
+        by=sort_fields,
+        ascending=ascending,
         inplace=True,
     )
     df.reset_index(drop=True, inplace=True)
-    df["RANK"] = list(range(len(df)))
 
+    if "PROTEIN" in df.columns:
+        for _, sub_df in df.groupby("PROTEIN"):
+            df.loc[sub_df.index, "RANK"] = list(range(len(sub_df)))
+    else:
+        df["RANK"] = list(range(len(df)))
 
     return df
 
@@ -88,9 +97,7 @@ def rank_poses_cross(
         RankingCriterion.TOTAL_SCORE,
     ],
 ) -> pd.DataFrame:
-    results = pd.concat(
-        rank_poses(df, criteria) for _, df in results.groupby("PROTEIN")
-    )
+    results = rank_poses(results, criteria)
 
     common_names: List[str] = set.intersection(
         *[set(names) for names in results.groupby("PROTEIN")["NAME"].unique()]
