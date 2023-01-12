@@ -101,9 +101,12 @@ def rank_poses_cross(
         *[set(names) for names in results.groupby("PROTEIN")["NAME"].unique()]
     )
     results = results[results["NAME"].isin(common_names)]
+    n_proteins = results["PROTEIN"].nunique()
 
     rows = []
     for name, df in results.groupby("NAME"):
+        if len(df) < n_proteins:  # missing poses for some proteins
+            continue
         row_data = dict(NAME=name)
         rank_sum = 0
         total_score_sum = 0
