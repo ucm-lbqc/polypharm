@@ -153,16 +153,37 @@ def report_cross(
     bs_residues: Dict[str, str],
     contact_cutoff: float,
     use_existing: bool = True,
+    tasks: int = 1,
 ) -> pd.DataFrame:
-    results: List[pd.DataFrame] = []
+    entries: List[Tuple[PathLike, PathLike]] = []
     for maefile in glob.glob(os.path.join(output_dir, "**", "*-out.maegz")):
+        csvfile = Path(maefile)
+        csvfile = csvfile.parent / (csvfile.stem.replace("-out", "") + "-report.csv")
+        entries.append((maefile, csvfile))
+
+    commands: List[List[str]] = []
+    for maefile, csvfile in entries:
+        if use_existing and os.path.exists(csvfile):
+            continue
         prot_name = Path(maefile).parent.name
-        df = report(
-            maefile,
-            resids=bs_residues[prot_name],
-            contact_cutoff=contact_cutoff,
-            use_existing=use_existing,
-        )
+        cmd = [
+            os.path.join(SCHRODINGER_PATH, "run"),
+            os.path.join(SCRIPT_DIR, "scripts", "report.py"),
+            str(maefile),
+            "--cutoff",
+            str(contact_cutoff),
+            "--output",
+            str(csvfile),
+            "--residues",
+            bs_residues[prot_name],
+        ]
+        commands.append(cmd)
+    _async_run(_concurrent_subprocess(commands, tasks))
+
+    results: List[pd.DataFrame] = []
+    for maefile, csvfile in entries:
+        prot_name = Path(maefile).parent.name
+        df = pd.read_csv(csvfile)
         df.insert(0, "PROTEIN", [prot_name for _ in range(len(df))])
         results.append(df)
     return pd.concat(results).reset_index(drop=True)
@@ -215,6 +236,7 @@ def run_ifd(
     )
 
 
+# TODO: use _concurrent_subprocess
 def run_ifd_cross(
     prot_files: List[PathLike],
     lig_files: List[PathLike],
@@ -268,6 +290,7 @@ def run_mmgbsa(ifd_file: PathLike, cpus: int = 2) -> None:
     )
 
 
+# TODO: use _concurrent_subprocess
 def run_mmgbsa_cross(
     ifd_files: List[PathLike],
     workdir: PathLike,
