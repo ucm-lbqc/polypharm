@@ -103,18 +103,24 @@ def rank_poses_cross(
     results = results[results["NAME"].isin(common_names)]
 
     rows = []
-    for [name, index], df in results.groupby(["NAME", "INDEX"]):
-        row_data = dict(NAME=name, INDEX=index)
-        for row in df.iterrows():
+    for name, df in results.groupby("NAME"):
+        row_data = dict(NAME=name)
+        rank_sum = 0
+        total_score_sum = 0
+        # TODO: test other poses besides top-ranked per protein
+        for row in [sub_df.iloc[0] for _, sub_df in df.groupby("PROTEIN")]:
             prot = row["PROTEIN"]
             row_data[f"{prot}_INT"] = row["INT"]
             row_data[f"{prot}_DGBIND"] = row["DGBIND"]
             row_data[f"{prot}_NORMT"] = row["NORMT"]
             row_data[f"{prot}_RANK"] = row["RANK"]
-        row_data["SUM_RANK"] = df["RANK"].sum()
-        row_data["SUM_NORMT"] = df["NORMT"].sum()
+            rank_sum += row["RANK"]
+            total_score_sum += row["NORMT"]
+        # FIXME: use averages, not sums
+        row_data["GLOBAL_RANK"] = rank_sum
+        row_data["GLOBAL_NORMT"] = total_score_sum
         rows.append(row_data)
-    return pd.DataFrame(rows).sort_values("SUM_NORMT", ascending=True)
+    return pd.DataFrame(rows).sort_values("GLOBAL_NORMT", ascending=True)
 
 
 def report(
