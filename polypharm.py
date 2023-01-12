@@ -65,7 +65,7 @@ def rank_poses(
     df = df.copy(deep=True)
     df["INT_NORM"] = normalize(df["INT"])
     df["DGBIND_NORM"] = 1 - normalize(df["DGBIND"])
-    df["NORMT"] = df["INT_NORM"] + df["DGBIND_NORM"]
+    df["NORMT"] = (df["INT_NORM"] + df["DGBIND_NORM"]) / 2
 
     sort_fields = [RANKING_COLUMN_MAP[criterion] for criterion in criteria]
     ascending = [criterion.ascending() for criterion in criteria]
