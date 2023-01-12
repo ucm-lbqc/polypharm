@@ -161,7 +161,7 @@ def report_cross(
         )
         df.insert(0, "PROTEIN", [prot_name for _ in range(len(df))])
         results.append(df)
-    return pd.concat(results)
+    return pd.concat(results).reset_index(drop=True)
 
 
 def run_silent(
