@@ -130,16 +130,17 @@ def rank_poses_cross(
 
 
 def report(
-    output_dir: PathLike, resids: str, contact_cutoff: float, use_existing: bool = True
+    maefile: PathLike, resids: str, contact_cutoff: float, use_existing: bool = True
 ) -> pd.DataFrame:
-    csvfile = os.path.join(output_dir, f"{os.path.basename(output_dir)}.csv")
+    csvfile = Path(maefile)
+    csvfile = csvfile.parent / (csvfile.stem.replace("-out", "") + "-report.csv")
     if not use_existing or not os.path.exists(csvfile):
         run_silent(
-            os.path.join(SCHRODINGER_PATH, "run.exe"),
+            os.path.join(SCHRODINGER_PATH, "run"),
             os.path.join(SCRIPT_DIR, "scripts", "report.py"),
-            str(output_dir),
+            str(maefile),
             cutoff=contact_cutoff,
-            output=csvfile,
+            output=str(csvfile),
             residues=resids,
         )
     return pd.read_csv(csvfile)
@@ -152,12 +153,10 @@ def report_cross(
     use_existing: bool = True,
 ) -> pd.DataFrame:
     results: List[pd.DataFrame] = []
-    for prot_dir in glob.glob(os.path.join(output_dir, "*")):
-        if not os.path.isdir(prot_dir):
-            continue
-        prot_name = os.path.basename(prot_dir)
+    for maefile in glob.glob(os.path.join(output_dir, "**", "*-out.maegz")):
+        prot_name = Path(maefile).parent.name
         df = report(
-            output_dir=prot_dir,
+            maefile,
             resids=bs_residues[prot_name],
             contact_cutoff=contact_cutoff,
             use_existing=use_existing,
