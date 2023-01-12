@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import enum
 import glob
@@ -5,8 +6,9 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Coroutine, Dict, Generator, List, Tuple, Union
 
 import jinja2
 import pandas as pd
@@ -298,3 +300,53 @@ def transient_dir(path: PathLike) -> Generator[None, None, None]:
         yield
     finally:
         os.chdir(cwd)
+
+
+# hack to run on a Jupyter Notebook (use existing run loop)
+def _async_run(coro: Coroutine[Any, Any, None]) -> None:
+    class RunThread(threading.Thread):
+        def run(self):
+            asyncio.run(coro)
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        thread = RunThread()
+        thread.start()
+        thread.join()
+    else:
+        return asyncio.run(coro)
+
+
+async def _concurrent_subprocess(commands: List[List[str]], tasks: int = 1) -> None:
+    async def worker():
+        while True:
+            cmd = await queue.get()
+            proc = await asyncio.create_subprocess_exec(
+                cmd[0],
+                *cmd[1:],
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            stdout, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                raise subprocess.CalledProcessError(
+                    proc.returncode or 0, cmd, stdout, stderr
+                )
+            queue.task_done()
+
+    queue: asyncio.Queue[List[str]] = asyncio.Queue()
+    for cmd in commands:
+        queue.put_nowait(cmd)
+
+    workers: List[asyncio.Task[Any]] = [
+        asyncio.create_task(worker()) for _ in range(tasks)
+    ]
+    await queue.join()
+
+    for task in workers:
+        task.cancel()
+    await asyncio.gather(*workers, return_exceptions=True)
