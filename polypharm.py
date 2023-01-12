@@ -52,14 +52,21 @@ def normalize(series: pd.Series) -> pd.Series:
 
 def rank_poses(
     df: pd.DataFrame,
+    # FIXME: Use total score as default
     criteria: List[RankingCriterion] = [
         RankingCriterion.NORMALIZED_CONTACTS,
         RankingCriterion.TOTAL_SCORE,
     ],
 ) -> pd.DataFrame:
     df = df.copy(deep=True)
-    df["INT_NORM"] = normalize(df["INT"])
-    df["DGBIND_NORM"] = 1 - normalize(df["DGBIND"])
+
+    if "PROTEIN" in df.columns:
+        for _, sub_df in df.groupby("PROTEIN"):
+            df.loc[sub_df.index, "INT_NORM"] = normalize(sub_df["INT"])
+            df.loc[sub_df.index, "DGBIND_NORM"] = 1 - normalize(sub_df["DGBIND"])
+    else:
+        df["INT_NORM"] = normalize(df["INT"])
+        df["DGBIND_NORM"] = 1 - normalize(df["DGBIND"])
     df["NORMT"] = (df["INT_NORM"] + df["DGBIND_NORM"]) / 2
 
     sort_fields = [RANKING_COLUMN_MAP[criterion] for criterion in criteria]
@@ -85,6 +92,7 @@ def rank_poses(
 
 def rank_poses_cross(
     results: pd.DataFrame,
+    # FIXME: Use total score as default
     criteria: List[RankingCriterion] = [
         RankingCriterion.NORMALIZED_CONTACTS,
         RankingCriterion.TOTAL_SCORE,
