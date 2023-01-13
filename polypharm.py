@@ -138,7 +138,7 @@ def report(
     csvfile = Path(maefile)
     csvfile = csvfile.parent / (csvfile.stem.replace("-out", "") + "-report.csv")
     if not use_existing or not os.path.exists(csvfile):
-        run_silent(
+        _run_silent(
             os.path.join(SCHRODINGER_PATH, "run"),
             os.path.join(SCRIPT_DIR, "scripts", "report.py"),
             str(maefile),
@@ -190,23 +190,6 @@ def report_cross(
     return pd.concat(results).reset_index(drop=True)
 
 
-def run_silent(
-    program: str,
-    *args: str,
-    use_single_dash: bool = False,
-    **kwargs: Union[bool, int, float, str],
-) -> None:
-    cmd = [program] + list(args)
-    for option, value in kwargs.items():
-        prefix = "-" if use_single_dash else ("--" if len(option) > 1 else "-")
-        option = prefix + option.replace("_", "-")
-
-        cmd.append(option)
-        if not isinstance(value, bool):
-            cmd.append(str(value))
-    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-
 def run_ifd(
     prot_file: PathLike,
     lig_file: PathLike,
@@ -224,7 +207,7 @@ def run_ifd(
         )
         io.write(template.render(vars))
 
-    run_silent(
+    _run_silent(
         os.path.join(SCHRODINGER_PATH, "ifd"),
         inp_file,
         NGLIDECPU=glide_cpus,
@@ -277,7 +260,7 @@ def run_ifd_cross(
 
 
 def run_mmgbsa(ifd_file: PathLike, cpus: int = 2) -> None:
-    run_silent(
+    _run_silent(
         os.path.join(SCHRODINGER_PATH, "prime_mmgbsa"),
         str(ifd_file),
         ligand="(res.pt UNK)",
@@ -381,3 +364,20 @@ async def _concurrent_subprocess(commands: List[_Command], tasks: int = 1) -> No
     for task in workers:
         task.cancel()
     await asyncio.gather(*workers, return_exceptions=True)
+
+
+def _run_silent(
+    program: str,
+    *args: str,
+    use_single_dash: bool = False,
+    **kwargs: Union[bool, int, float, str],
+) -> None:
+    cmd = [program] + list(args)
+    for option, value in kwargs.items():
+        prefix = "-" if use_single_dash else ("--" if len(option) > 1 else "-")
+        option = prefix + option.replace("_", "-")
+
+        cmd.append(option)
+        if not isinstance(value, bool):
+            cmd.append(str(value))
+    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
