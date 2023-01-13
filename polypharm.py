@@ -327,23 +327,6 @@ async def _concurrent_subprocess(commands: List[_Command], tasks: int = 1) -> No
     await asyncio.gather(*workers, return_exceptions=True)
 
 
-def _run_silent(
-    program: str,
-    *args: str,
-    use_single_dash: bool = False,
-    **kwargs: Union[bool, int, float, str],
-) -> None:
-    cmd = [program] + list(args)
-    for option, value in kwargs.items():
-        prefix = "-" if use_single_dash else ("--" if len(option) > 1 else "-")
-        option = prefix + option.replace("_", "-")
-
-        cmd.append(option)
-        if not isinstance(value, bool):
-            cmd.append(str(value))
-    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-
 @contextlib.contextmanager
 def _transient_dir(path: PathLike) -> Generator[None, None, None]:
     Path(path).mkdir(parents=True, exist_ok=True)
