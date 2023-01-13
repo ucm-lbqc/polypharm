@@ -1,31 +1,19 @@
-import asyncio
-import contextlib
-import dataclasses
 import enum
 import glob
 import os
 import shutil
-import subprocess
-import sys
-import threading
 from pathlib import Path
-from typing import Any, Coroutine, Dict, Generator, List, Optional, Tuple, Union
+from typing import Dict, List
 
-import jinja2
 import pandas as pd
 
-PathLike = Union[str, Path]
-
-
-SCHRODINGER_PATH = os.getenv("SCHRODINGER_PATH")
-SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-TEMPLATE_ENV = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.join(SCRIPT_DIR, "templates"))
+from .concurrency import Command, async_run, concurrent_subprocess
+from .helpers import (
+    PathLike,
+    get_schrodinger_path,
+    get_script_path,
+    render_template_to_file,
 )
-
-if not SCHRODINGER_PATH:
-    print("error: Environment variable SCHRODINGER_PATH is not set", file=sys.stderr)
-    sys.exit(1)
 
 
 class RankingCriterion(enum.Enum):
@@ -139,15 +127,15 @@ def report(
     tasks: int = 1,
     quiet: bool = False,
 ) -> pd.DataFrame:
-    commands: List[_Command] = []
+    commands: List[Command] = []
     for maefile in glob.glob(os.path.join(output_dir, "**", "*-out.maegz")):
         path = Path(maefile)
         prot_name = Path(maefile).parent.name
         lig_name = path.stem.replace("-out", "")
         csvfile = path.parent / f"{lig_name}-report.csv"
         args = [
-            os.path.join(SCHRODINGER_PATH, "run"),
-            os.path.join(SCRIPT_DIR, "scripts", "report.py"),
+            os.path.join(get_schrodinger_path(), "run"),
+            get_script_path("report.py"),
             str(maefile),
             "--cutoff",
             str(contact_cutoff),
@@ -158,7 +146,7 @@ def report(
         ]
         data = dict(csvfile=csvfile, maefile=maefile, prot_name=prot_name)
         jobid = f"report/{prot_name}/{lig_name}"
-        commands.append(_Command(jobid, args, data=data))
+        commands.append(Command(jobid, args, data=data))
 
     commands_to_run = [
         cmd
@@ -166,7 +154,7 @@ def report(
         if not use_existing or not os.path.exists(cmd.data["csvfile"])
     ]
     if commands_to_run:
-        _async_run(_concurrent_subprocess(commands_to_run, tasks, quiet))
+        async_run(concurrent_subprocess(commands_to_run, tasks, quiet))
 
     results: List[pd.DataFrame] = []
     for cmd in commands:
@@ -186,7 +174,7 @@ def run_ifd_cross(
     tasks: int = 1,
     quiet: bool = False,
 ) -> None:
-    commands: List[_Command] = []
+    commands: List[Command] = []
     for prot_file in map(Path, prot_files):
         prot_name = prot_file.stem
 
@@ -207,17 +195,16 @@ def run_ifd_cross(
             shutil.copy(lig_file, lig_workdir)
 
             inp_file = f"{lig_file.stem}.inp"
-            with open(inp_file, "w") as io:
-                template = TEMPLATE_ENV.get_template("ifd.inp")
-                vars = dict(
-                    protfile=os.path.join("..", prot_file.name),
-                    ligfile=lig_file.name,
-                    resids=bs_residues[prot_file.name],
-                )
-                io.write(template.render(vars))
+            render_template_to_file(
+                "ifd.inp",
+                inp_file,
+                protfile=os.path.join("..", prot_file.name),
+                ligfile=lig_file.name,
+                resids=bs_residues[prot_file.name],
+            )
 
             args = [
-                os.path.join(SCHRODINGER_PATH, "ifd"),
+                os.path.join(get_schrodinger_path(), "ifd"),
                 inp_file,
                 "-NGLIDECPU",
                 str(glide_cpus),
@@ -230,8 +217,8 @@ def run_ifd_cross(
                 "-TMPLAUNCHDIR",
                 "-WAIT",
             ]
-            commands.append(_Command(jobid, args, workdir=lig_workdir))
-    _async_run(_concurrent_subprocess(commands, tasks, quiet))
+            commands.append(Command(jobid, args, workdir=lig_workdir))
+    async_run(concurrent_subprocess(commands, tasks, quiet))
 
 
 def run_mmgbsa_cross(
@@ -241,7 +228,7 @@ def run_mmgbsa_cross(
     tasks: int = 1,
     quiet: bool = False,
 ) -> None:
-    commands: List[_Command] = []
+    commands: List[Command] = []
     for ifd_file in map(Path, ifd_files):
         ifd_file = ifd_file.absolute()
         prot_name = ifd_file.parent.parts[-1]
@@ -255,7 +242,7 @@ def run_mmgbsa_cross(
             continue
 
         args = [
-            os.path.join(SCHRODINGER_PATH, "prime_mmgbsa"),
+            os.path.join(get_schrodinger_path(), "prime_mmgbsa"),
             str(ifd_file),
             "-ligand",
             "(res.pt UNK)",
@@ -271,83 +258,5 @@ def run_mmgbsa_cross(
             f"localhost:{cpus}",
             "-WAIT",
         ]
-        commands.append(_Command(jobid, args, workdir=prot_workdir))
-    _async_run(_concurrent_subprocess(commands, tasks, quiet))
-
-
-@dataclasses.dataclass
-class _Command:
-    jobid: str
-    args: List[str]
-    workdir: Optional[PathLike] = None
-    data: Dict[str, Any] = dataclasses.field(default_factory=dict)
-
-
-# hack to run on a Jupyter Notebook (use existing run loop)
-def _async_run(coro: Coroutine[Any, Any, None]) -> None:
-    class RunThread(threading.Thread):
-        def run(self):
-            asyncio.run(coro)
-
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop and loop.is_running():
-        thread = RunThread()
-        thread.start()
-        thread.join()
-    else:
-        return asyncio.run(coro)
-
-
-async def _concurrent_subprocess(
-    commands: List[_Command], tasks: int = 1, quiet: bool = False
-) -> None:
-    async def worker():
-        while True:
-            cmd = await queue.get()
-            if not quiet:
-                i = n_commands - queue.qsize()
-                print(f"[{i}/{n_commands}] Starting {cmd.jobid}...")
-            with _transient_dir(cmd.workdir or os.getcwd()):
-                proc = await asyncio.create_subprocess_exec(
-                    cmd.args[0],
-                    *cmd.args[1:],
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.STDOUT,
-                )
-                stdout, stderr = await proc.communicate()
-                if proc.returncode != 0:
-                    raise subprocess.CalledProcessError(
-                        proc.returncode or 0, cmd.args, stdout, stderr
-                    )
-                queue.task_done()
-
-    queue: asyncio.Queue[_Command] = asyncio.Queue()
-    n_commands = len(commands)
-    for cmd in commands:
-        queue.put_nowait(cmd)
-
-    if not quiet:
-        print(f"Running {n_commands} command(s) in {tasks} parallel task(s)...")
-    workers: List[asyncio.Task[Any]] = [
-        asyncio.create_task(worker()) for _ in range(tasks)
-    ]
-    await queue.join()
-
-    for task in workers:
-        task.cancel()
-    await asyncio.gather(*workers, return_exceptions=True)
-
-
-@contextlib.contextmanager
-def _transient_dir(path: PathLike) -> Generator[None, None, None]:
-    Path(path).mkdir(parents=True, exist_ok=True)
-    cwd = os.getcwd()
-    try:
-        os.chdir(path)
-        yield
-    finally:
-        os.chdir(cwd)
+        commands.append(Command(jobid, args, workdir=prot_workdir))
+    async_run(concurrent_subprocess(commands, tasks, quiet))
