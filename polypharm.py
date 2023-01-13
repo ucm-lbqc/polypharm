@@ -244,18 +244,17 @@ def run_mmgbsa(ifd_file: PathLike, cpus: int = 2) -> None:
     )
 
 
-# TODO: use _concurrent_subprocess
 def run_mmgbsa_cross(
     ifd_files: List[PathLike],
     workdir: PathLike,
     cpus: int = 2,
+    tasks: int = 1,
 ) -> None:
-    for i, ifd_file in enumerate(map(Path, ifd_files)):
+    commands: List[_Command] = []
+    for ifd_file in map(Path, ifd_files):
         ifd_file = ifd_file.absolute()
         prot_name = ifd_file.parent.parts[-1]
-
         prot_workdir = Path(workdir, prot_name)
-        prot_workdir.mkdir(parents=True, exist_ok=True)
 
         lig_name = ifd_file.stem.replace("-out", "")
         jobid = f"{prot_name}/{lig_name}"
@@ -264,9 +263,25 @@ def run_mmgbsa_cross(
             print(f"Skipping MM/GBSA for {jobid}... already exists")
             continue
 
-        print(f"Running MM/GBSA for {jobid} [{i}/{len(ifd_files)}]...")
-        with _transient_dir(prot_workdir):
-            run_mmgbsa(ifd_file, cpus)
+        args = [
+            os.path.join(SCHRODINGER_PATH, "prime_mmgbsa"),
+            str(ifd_file),
+            "-ligand",
+            "(res.pt UNK)",
+            "-job_type",
+            "REAL_MIN",
+            "-out_type",
+            "COMPLEX",
+            "-csv_output",
+            "yes",
+            "-JOBNAME",
+            Path(ifd_file).stem.replace("-out", ""),
+            "-HOST",
+            f"localhost:{cpus}",
+            "-WAIT",
+        ]
+        commands.append(_Command(args, workdir=prot_workdir))
+    _async_run(_concurrent_subprocess(commands, tasks))
 
 
 @dataclasses.dataclass
