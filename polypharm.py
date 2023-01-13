@@ -283,6 +283,7 @@ def run_mmgbsa_cross(
 
 @contextlib.contextmanager
 def transient_dir(path: PathLike) -> Generator[None, None, None]:
+    Path(path).mkdir(parents=True, exist_ok=True)
     cwd = os.getcwd()
     try:
         os.chdir(path)
