@@ -322,18 +322,19 @@ async def _concurrent_subprocess(commands: List[_Command], tasks: int = 1) -> No
     async def worker():
         while True:
             cmd = await queue.get()
-            proc = await asyncio.create_subprocess_exec(
-                cmd.args[0],
-                *cmd.args[1:],
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.STDOUT,
-            )
-            stdout, stderr = await proc.communicate()
-            if proc.returncode != 0:
-                raise subprocess.CalledProcessError(
-                    proc.returncode or 0, cmd.args, stdout, stderr
+            with transient_dir(cmd.workdir or os.getcwd()):
+                proc = await asyncio.create_subprocess_exec(
+                    cmd.args[0],
+                    *cmd.args[1:],
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
                 )
-            queue.task_done()
+                stdout, stderr = await proc.communicate()
+                if proc.returncode != 0:
+                    raise subprocess.CalledProcessError(
+                        proc.returncode or 0, cmd.args, stdout, stderr
+                    )
+                queue.task_done()
 
     queue: asyncio.Queue[_Command] = asyncio.Queue()
     for cmd in commands:
