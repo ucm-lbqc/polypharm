@@ -1,6 +1,7 @@
 import contextlib
 import os
 import sys
+from importlib import resources
 from pathlib import Path
 from typing import Any, Generator, Union
 
@@ -9,7 +10,6 @@ import jinja2
 PathLike = Union[str, Path]
 
 ROOT_DIR = Path(__file__).parent.parent
-SCRIPT_DIR = ROOT_DIR / "scripts"
 TEMPLATE_ENV = jinja2.Environment(
     loader=jinja2.FileSystemLoader(ROOT_DIR / "templates")
 )
@@ -28,10 +28,12 @@ def get_schrodinger_path() -> str:
 
 
 def get_script_path(filename: str) -> str:
-    path = Path(SCRIPT_DIR, filename)
-    if not path.exists():
-        raise FileNotFoundError(f"Script {filename} not found")
-    return str(path)
+    resource = resources.files("polypharm")
+    with resources.as_file(resource) as package_dir:
+        script_file = package_dir.parent / "scripts" / filename
+        if not script_file.exists():
+            raise FileNotFoundError(f"Script {filename} not found")
+        return str(script_file)
 
 
 def render_template(filename: str, **vars: Any) -> str:
