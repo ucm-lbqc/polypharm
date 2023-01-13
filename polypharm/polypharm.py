@@ -158,6 +158,8 @@ def report(
 
     results: List[pd.DataFrame] = []
     for cmd in commands:
+        if not os.path.exists(cmd.data["csvfile"]):  # may have failed
+            continue
         df = pd.read_csv(cmd.data["csvfile"])
         df.insert(0, "PROTEIN", [cmd.data["prot_name"] for _ in range(len(df))])
         results.append(df)
