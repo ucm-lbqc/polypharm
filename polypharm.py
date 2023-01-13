@@ -202,7 +202,6 @@ def run_ifd(
     )
 
 
-# TODO: use _concurrent_subprocess
 def run_ifd_cross(
     prot_files: List[PathLike],
     lig_files: List[PathLike],
@@ -210,7 +209,9 @@ def run_ifd_cross(
     workdir: PathLike = "ifd",
     glide_cpus: int = 2,
     prime_cpus: int = 2,
+    tasks: int = 1,
 ) -> None:
+    commands: List[_Command] = []
     for prot_file in map(Path, prot_files):
         prot_name = prot_file.stem
 
@@ -218,7 +219,7 @@ def run_ifd_cross(
         prot_workdir.mkdir(parents=True, exist_ok=True)
         shutil.copy(prot_file, prot_workdir)
 
-        for i, lig_file in enumerate(map(Path, lig_files)):
+        for lig_file in map(Path, lig_files):
             lig_name = lig_file.stem
             jobid = f"{prot_name}/{lig_name}"
 
@@ -230,15 +231,32 @@ def run_ifd_cross(
                 lig_workdir.mkdir()
             shutil.copy(lig_file, lig_workdir)
 
-            print(f"Running IFD for {jobid} [{i}/{len(lig_files)}]...")
-            with _transient_dir(lig_workdir):
-                run_ifd(
-                    os.path.join("..", prot_file.name),
-                    lig_file.name,
-                    bs_residues[prot_file.name],
-                    glide_cpus,
-                    prime_cpus,
+            inp_file = f"{lig_file.stem}.inp"
+            with open(inp_file, "w") as io:
+                template = TEMPLATE_ENV.get_template("ifd.inp")
+                vars = dict(
+                    protfile=os.path.join("..", prot_file.name),
+                    ligfile=lig_file.name,
+                    resids=bs_residues[prot_file.name],
                 )
+                io.write(template.render(vars))
+
+            args = [
+                os.path.join(SCHRODINGER_PATH, "ifd"),
+                inp_file,
+                "-NGLIDECPU",
+                str(glide_cpus),
+                "-NPRIMECPU",
+                str(prime_cpus),
+                "-HOST",
+                "localhost",
+                "-SUBHOST",
+                "localhost",
+                "-TMPLAUNCHDIR",
+                "-WAIT",
+            ]
+            commands.append(_Command(args, workdir=lig_workdir))
+    _async_run(_concurrent_subprocess(commands, tasks))
 
 
 def run_mmgbsa(ifd_file: PathLike, cpus: int = 2) -> None:
