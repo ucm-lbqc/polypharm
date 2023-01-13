@@ -133,23 +133,6 @@ def rank_poses_cross(
 
 
 def report(
-    maefile: PathLike, resids: str, contact_cutoff: float, use_existing: bool = True
-) -> pd.DataFrame:
-    csvfile = Path(maefile)
-    csvfile = csvfile.parent / (csvfile.stem.replace("-out", "") + "-report.csv")
-    if not use_existing or not os.path.exists(csvfile):
-        _run_silent(
-            os.path.join(SCHRODINGER_PATH, "run"),
-            os.path.join(SCRIPT_DIR, "scripts", "report.py"),
-            str(maefile),
-            cutoff=contact_cutoff,
-            output=str(csvfile),
-            residues=resids,
-        )
-    return pd.read_csv(csvfile)
-
-
-def report_cross(
     output_dir: PathLike,
     bs_residues: Dict[str, str],
     contact_cutoff: float,
