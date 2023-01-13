@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import dataclasses
 import enum
 import glob
 import os
@@ -8,7 +9,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
-from typing import Any, Coroutine, Dict, Generator, List, Tuple, Union
+from typing import Any, Coroutine, Dict, Generator, List, Optional, Tuple, Union
 
 import jinja2
 import pandas as pd
@@ -155,18 +156,12 @@ def report_cross(
     use_existing: bool = True,
     tasks: int = 1,
 ) -> pd.DataFrame:
-    entries: List[Tuple[PathLike, PathLike]] = []
+    commands: List[_Command] = []
     for maefile in glob.glob(os.path.join(output_dir, "**", "*-out.maegz")):
         csvfile = Path(maefile)
         csvfile = csvfile.parent / (csvfile.stem.replace("-out", "") + "-report.csv")
-        entries.append((maefile, csvfile))
-
-    commands: List[List[str]] = []
-    for maefile, csvfile in entries:
-        if use_existing and os.path.exists(csvfile):
-            continue
         prot_name = Path(maefile).parent.name
-        cmd = [
+        args = [
             os.path.join(SCHRODINGER_PATH, "run"),
             os.path.join(SCRIPT_DIR, "scripts", "report.py"),
             str(maefile),
@@ -177,14 +172,20 @@ def report_cross(
             "--residues",
             bs_residues[prot_name],
         ]
-        commands.append(cmd)
-    _async_run(_concurrent_subprocess(commands, tasks))
+        data = dict(csvfile=csvfile, maefile=maefile, prot_name=prot_name)
+        commands.append(_Command(args, data=data))
+
+    commands_to_run = [
+        cmd
+        for cmd in commands
+        if not use_existing or not os.path.exists(cmd.data["csvfile"])
+    ]
+    _async_run(_concurrent_subprocess(commands_to_run, tasks))
 
     results: List[pd.DataFrame] = []
-    for maefile, csvfile in entries:
-        prot_name = Path(maefile).parent.name
-        df = pd.read_csv(csvfile)
-        df.insert(0, "PROTEIN", [prot_name for _ in range(len(df))])
+    for cmd in commands:
+        df = pd.read_csv(cmd.data["csvfile"])
+        df.insert(0, "PROTEIN", [cmd.data["prot_name"] for _ in range(len(df))])
         results.append(df)
     return pd.concat(results).reset_index(drop=True)
 
@@ -325,6 +326,13 @@ def transient_dir(path: PathLike) -> Generator[None, None, None]:
         os.chdir(cwd)
 
 
+@dataclasses.dataclass
+class _Command:
+    args: List[str]
+    workdir: Optional[PathLike] = None
+    data: Dict[str, Any] = dataclasses.field(default_factory=dict)
+
+
 # hack to run on a Jupyter Notebook (use existing run loop)
 def _async_run(coro: Coroutine[Any, Any, None]) -> None:
     class RunThread(threading.Thread):
@@ -344,7 +352,7 @@ def _async_run(coro: Coroutine[Any, Any, None]) -> None:
         return asyncio.run(coro)
 
 
-async def _concurrent_subprocess(commands: List[List[str]], tasks: int = 1) -> None:
+async def _concurrent_subprocess(commands: List[_Command], tasks: int = 1) -> None:
     async def worker():
         while True:
             cmd = await queue.get()
@@ -363,7 +371,7 @@ async def _concurrent_subprocess(commands: List[List[str]], tasks: int = 1) -> N
 
     queue: asyncio.Queue[List[str]] = asyncio.Queue()
     for cmd in commands:
-        queue.put_nowait(cmd)
+        queue.put_nowait(cmd.args)
 
     workers: List[asyncio.Task[Any]] = [
         asyncio.create_task(worker()) for _ in range(tasks)
