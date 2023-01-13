@@ -229,21 +229,6 @@ def run_ifd_cross(
     _async_run(_concurrent_subprocess(commands, tasks))
 
 
-def run_mmgbsa(ifd_file: PathLike, cpus: int = 2) -> None:
-    _run_silent(
-        os.path.join(SCHRODINGER_PATH, "prime_mmgbsa"),
-        str(ifd_file),
-        ligand="(res.pt UNK)",
-        job_type="REAL_MIN",
-        out_type="COMPLEX",
-        csv_output="yes",
-        JOBNAME=Path(ifd_file).stem.replace("-out", ""),
-        HOST=f"localhost:{cpus}",
-        WAIT=True,
-        use_single_dash=True,
-    )
-
-
 def run_mmgbsa_cross(
     ifd_files: List[PathLike],
     workdir: PathLike,
