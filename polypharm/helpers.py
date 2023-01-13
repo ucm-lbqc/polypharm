@@ -28,9 +28,8 @@ def get_schrodinger_path() -> str:
 
 
 def get_script_path(filename: str) -> str:
-    resource = resources.files("polypharm")
-    with resources.as_file(resource) as package_dir:
-        script_file = package_dir.parent / "scripts" / filename
+    resource = resources.files("polypharm").joinpath(os.path.join("scripts", filename))
+    with resources.as_file(resource) as script_file:
         if not script_file.exists():
             raise FileNotFoundError(f"Script {filename} not found")
         return str(script_file)
