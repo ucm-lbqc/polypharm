@@ -48,11 +48,6 @@ RANKING_COLUMN_MAP = {
 }
 
 
-def normalize(series: pd.Series) -> pd.Series:
-    min_value = series.min()
-    return (series - min_value) / (series.max() - min_value)
-
-
 def rank_poses(
     df: pd.DataFrame,
     # FIXME: Use total score as default
@@ -61,6 +56,10 @@ def rank_poses(
         RankingCriterion.TOTAL_SCORE,
     ],
 ) -> pd.DataFrame:
+    def normalize(series: pd.Series) -> pd.Series:
+        min_value = series.min()
+        return (series - min_value) / (series.max() - min_value)
+
     df = df.copy(deep=True)
 
     if "PROTEIN" in df.columns:
