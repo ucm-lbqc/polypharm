@@ -1,0 +1,2 @@
+include polypharm/scripts/*
+include polypharm/templates/*
