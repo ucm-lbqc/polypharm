@@ -231,7 +231,7 @@ def run_ifd_cross(
             shutil.copy(lig_file, lig_workdir)
 
             print(f"Running IFD for {jobid} [{i}/{len(lig_files)}]...")
-            with transient_dir(lig_workdir):
+            with _transient_dir(lig_workdir):
                 run_ifd(
                     os.path.join("..", prot_file.name),
                     lig_file.name,
@@ -277,19 +277,8 @@ def run_mmgbsa_cross(
             continue
 
         print(f"Running MM/GBSA for {jobid} [{i}/{len(ifd_files)}]...")
-        with transient_dir(prot_workdir):
+        with _transient_dir(prot_workdir):
             run_mmgbsa(ifd_file, cpus)
-
-
-@contextlib.contextmanager
-def transient_dir(path: PathLike) -> Generator[None, None, None]:
-    Path(path).mkdir(parents=True, exist_ok=True)
-    cwd = os.getcwd()
-    try:
-        os.chdir(path)
-        yield
-    finally:
-        os.chdir(cwd)
 
 
 @dataclasses.dataclass
@@ -322,7 +311,7 @@ async def _concurrent_subprocess(commands: List[_Command], tasks: int = 1) -> No
     async def worker():
         while True:
             cmd = await queue.get()
-            with transient_dir(cmd.workdir or os.getcwd()):
+            with _transient_dir(cmd.workdir or os.getcwd()):
                 proc = await asyncio.create_subprocess_exec(
                     cmd.args[0],
                     *cmd.args[1:],
@@ -365,3 +354,14 @@ def _run_silent(
         if not isinstance(value, bool):
             cmd.append(str(value))
     subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+
+@contextlib.contextmanager
+def _transient_dir(path: PathLike) -> Generator[None, None, None]:
+    Path(path).mkdir(parents=True, exist_ok=True)
+    cwd = os.getcwd()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(cwd)
