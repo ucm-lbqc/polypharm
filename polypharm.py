@@ -137,6 +137,7 @@ def report(
     contact_cutoff: float,
     use_existing: bool = True,
     tasks: int = 1,
+    quiet: bool = False,
 ) -> pd.DataFrame:
     commands: List[_Command] = []
     for maefile in glob.glob(os.path.join(output_dir, "**", "*-out.maegz")):
@@ -164,7 +165,7 @@ def report(
         for cmd in commands
         if not use_existing or not os.path.exists(cmd.data["csvfile"])
     ]
-    _async_run(_concurrent_subprocess(commands_to_run, tasks))
+    _async_run(_concurrent_subprocess(commands_to_run, tasks, quiet))
 
     results: List[pd.DataFrame] = []
     for cmd in commands:
@@ -182,6 +183,7 @@ def run_ifd_cross(
     glide_cpus: int = 2,
     prime_cpus: int = 2,
     tasks: int = 1,
+    quiet: bool = False,
 ) -> None:
     commands: List[_Command] = []
     for prot_file in map(Path, prot_files):
@@ -228,7 +230,7 @@ def run_ifd_cross(
                 "-WAIT",
             ]
             commands.append(_Command(jobid, args, workdir=lig_workdir))
-    _async_run(_concurrent_subprocess(commands, tasks))
+    _async_run(_concurrent_subprocess(commands, tasks, quiet))
 
 
 def run_mmgbsa_cross(
@@ -236,6 +238,7 @@ def run_mmgbsa_cross(
     workdir: PathLike,
     cpus: int = 2,
     tasks: int = 1,
+    quiet: bool = False,
 ) -> None:
     commands: List[_Command] = []
     for ifd_file in map(Path, ifd_files):
@@ -268,7 +271,7 @@ def run_mmgbsa_cross(
             "-WAIT",
         ]
         commands.append(_Command(jobid, args, workdir=prot_workdir))
-    _async_run(_concurrent_subprocess(commands, tasks))
+    _async_run(_concurrent_subprocess(commands, tasks, quiet))
 
 
 @dataclasses.dataclass
@@ -298,10 +301,15 @@ def _async_run(coro: Coroutine[Any, Any, None]) -> None:
         return asyncio.run(coro)
 
 
-async def _concurrent_subprocess(commands: List[_Command], tasks: int = 1) -> None:
+async def _concurrent_subprocess(
+    commands: List[_Command], tasks: int = 1, quiet: bool = False
+) -> None:
     async def worker():
         while True:
             cmd = await queue.get()
+            if not quiet:
+                i = n_commands - queue.qsize()
+                print(f"[{i}/{n_commands}] Starting {cmd.jobid}...")
             with _transient_dir(cmd.workdir or os.getcwd()):
                 proc = await asyncio.create_subprocess_exec(
                     cmd.args[0],
@@ -317,9 +325,12 @@ async def _concurrent_subprocess(commands: List[_Command], tasks: int = 1) -> No
                 queue.task_done()
 
     queue: asyncio.Queue[_Command] = asyncio.Queue()
+    n_commands = len(commands)
     for cmd in commands:
         queue.put_nowait(cmd)
 
+    if not quiet:
+        print(f"Running {n_commands} command(s) in {tasks} parallel task(s)...")
     workers: List[asyncio.Task[Any]] = [
         asyncio.create_task(worker()) for _ in range(tasks)
     ]
