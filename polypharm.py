@@ -172,36 +172,6 @@ def report(
     return pd.concat(results).reset_index(drop=True)
 
 
-def run_ifd(
-    prot_file: PathLike,
-    lig_file: PathLike,
-    resids: str,
-    glide_cpus: int = 2,
-    prime_cpus: int = 2,
-) -> None:
-    inp_file = f"{Path(lig_file).stem}.inp"
-    with open(inp_file, "w") as io:
-        template = TEMPLATE_ENV.get_template("ifd.inp")
-        vars = dict(
-            protfile=prot_file,
-            ligfile=Path(lig_file).name,
-            resids=resids,
-        )
-        io.write(template.render(vars))
-
-    _run_silent(
-        os.path.join(SCHRODINGER_PATH, "ifd"),
-        inp_file,
-        NGLIDECPU=glide_cpus,
-        NPRIMECPU=prime_cpus,
-        HOST="localhost",
-        SUBHOST="localhost",
-        TMPLAUNCHDIR=True,
-        WAIT=True,
-        use_single_dash=True,
-    )
-
-
 def run_ifd_cross(
     prot_files: List[PathLike],
     lig_files: List[PathLike],
