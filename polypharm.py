@@ -323,21 +323,21 @@ async def _concurrent_subprocess(commands: List[_Command], tasks: int = 1) -> No
         while True:
             cmd = await queue.get()
             proc = await asyncio.create_subprocess_exec(
-                cmd[0],
-                *cmd[1:],
+                cmd.args[0],
+                *cmd.args[1:],
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
             )
             stdout, stderr = await proc.communicate()
             if proc.returncode != 0:
                 raise subprocess.CalledProcessError(
-                    proc.returncode or 0, cmd, stdout, stderr
+                    proc.returncode or 0, cmd.args, stdout, stderr
                 )
             queue.task_done()
 
-    queue: asyncio.Queue[List[str]] = asyncio.Queue()
+    queue: asyncio.Queue[_Command] = asyncio.Queue()
     for cmd in commands:
-        queue.put_nowait(cmd.args)
+        queue.put_nowait(cmd)
 
     workers: List[asyncio.Task[Any]] = [
         asyncio.create_task(worker()) for _ in range(tasks)
