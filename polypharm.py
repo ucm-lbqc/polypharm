@@ -165,7 +165,8 @@ def report(
         for cmd in commands
         if not use_existing or not os.path.exists(cmd.data["csvfile"])
     ]
-    _async_run(_concurrent_subprocess(commands_to_run, tasks, quiet))
+    if commands_to_run:
+        _async_run(_concurrent_subprocess(commands_to_run, tasks, quiet))
 
     results: List[pd.DataFrame] = []
     for cmd in commands:
