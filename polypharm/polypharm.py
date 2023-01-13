@@ -121,7 +121,7 @@ def rank_poses_cross(
 
 def report(
     output_dir: PathLike,
-    bs_residues: Dict[str, str],
+    bs_residues: Dict[str, List[str]],
     contact_cutoff: float,
     use_existing: bool = True,
     tasks: int = 1,
@@ -142,7 +142,7 @@ def report(
             "--output",
             str(csvfile),
             "--residues",
-            bs_residues[prot_name],
+            ",".join(bs_residues[prot_name]),
         ]
         data = dict(csvfile=csvfile, maefile=maefile, prot_name=prot_name)
         jobid = f"report/{prot_name}/{lig_name}"
@@ -169,7 +169,7 @@ def report(
 def run_ifd_cross(
     prot_files: List[PathLike],
     lig_files: List[PathLike],
-    bs_residues: Dict[str, str],
+    bs_residues: Dict[str, List[str]],
     workdir: PathLike = "ifd",
     glide_cpus: int = 2,
     prime_cpus: int = 2,
@@ -202,7 +202,7 @@ def run_ifd_cross(
                 inp_file,
                 protfile=os.path.join("..", prot_file.name),
                 ligfile=lig_file.name,
-                resids=bs_residues[prot_file.name],
+                resids=",".join(bs_residues[prot_file.name]),
             )
 
             args = [
