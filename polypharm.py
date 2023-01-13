@@ -140,9 +140,10 @@ def report(
 ) -> pd.DataFrame:
     commands: List[_Command] = []
     for maefile in glob.glob(os.path.join(output_dir, "**", "*-out.maegz")):
-        csvfile = Path(maefile)
-        csvfile = csvfile.parent / (csvfile.stem.replace("-out", "") + "-report.csv")
+        path = Path(maefile)
         prot_name = Path(maefile).parent.name
+        lig_name = path.stem.replace("-out", "")
+        csvfile = path.parent / f"{lig_name}-report.csv"
         args = [
             os.path.join(SCHRODINGER_PATH, "run"),
             os.path.join(SCRIPT_DIR, "scripts", "report.py"),
@@ -155,7 +156,8 @@ def report(
             bs_residues[prot_name],
         ]
         data = dict(csvfile=csvfile, maefile=maefile, prot_name=prot_name)
-        commands.append(_Command(args, data=data))
+        jobid = f"report/{prot_name}/{lig_name}"
+        commands.append(_Command(jobid, args, data=data))
 
     commands_to_run = [
         cmd
@@ -191,11 +193,11 @@ def run_ifd_cross(
 
         for lig_file in map(Path, lig_files):
             lig_name = lig_file.stem
-            jobid = f"{prot_name}/{lig_name}"
+            jobid = f"ifd/{prot_name}/{lig_name}"
 
             lig_workdir = prot_workdir / lig_name
             if lig_workdir.exists():
-                print(f"Skipping IFD for {jobid}... already exists")
+                print(f"Skipping {jobid}... already exists")
                 continue
             else:
                 lig_workdir.mkdir()
@@ -225,7 +227,7 @@ def run_ifd_cross(
                 "-TMPLAUNCHDIR",
                 "-WAIT",
             ]
-            commands.append(_Command(args, workdir=lig_workdir))
+            commands.append(_Command(jobid, args, workdir=lig_workdir))
     _async_run(_concurrent_subprocess(commands, tasks))
 
 
@@ -242,10 +244,10 @@ def run_mmgbsa_cross(
         prot_workdir = Path(workdir, prot_name)
 
         lig_name = ifd_file.stem.replace("-out", "")
-        jobid = f"{prot_name}/{lig_name}"
+        jobid = f"mmgbsa/{prot_name}/{lig_name}"
 
         if os.path.exists(prot_workdir / f"{lig_name}-out.maegz"):
-            print(f"Skipping MM/GBSA for {jobid}... already exists")
+            print(f"Skipping {jobid}... already exists")
             continue
 
         args = [
@@ -265,12 +267,13 @@ def run_mmgbsa_cross(
             f"localhost:{cpus}",
             "-WAIT",
         ]
-        commands.append(_Command(args, workdir=prot_workdir))
+        commands.append(_Command(jobid, args, workdir=prot_workdir))
     _async_run(_concurrent_subprocess(commands, tasks))
 
 
 @dataclasses.dataclass
 class _Command:
+    jobid: str
     args: List[str]
     workdir: Optional[PathLike] = None
     data: Dict[str, Any] = dataclasses.field(default_factory=dict)
