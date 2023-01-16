@@ -225,7 +225,7 @@ def run_ifd_cross(
 
 def run_mmgbsa_cross(
     ifd_files: List[PathLike],
-    workdir: PathLike,
+    workdir: PathLike = "mmgbsa",
     cpus: int = 2,
     tasks: int = 1,
     quiet: bool = False,
