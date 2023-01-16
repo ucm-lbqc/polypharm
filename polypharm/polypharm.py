@@ -113,7 +113,7 @@ def rank_molecules(
 def report(
     maefiles: List[PathLike],
     bs_residues: Dict[str, List[str]],
-    contact_cutoff: float,
+    contact_cutoff: float = 5,
     use_existing: bool = True,
     tasks: int = 1,
     quiet: bool = False,
