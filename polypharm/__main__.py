@@ -189,13 +189,13 @@ def parse_args(
         "--glide-cpus",
         type=int,
         default=1,
-        help="Number of processors to be used by Glide.",
+        help="Number of processors to be used by Glide. Defaults to %(default)s.",
     )
     parser.add_argument(
         "--prime-cpus",
         type=int,
         default=1,
-        help="Number of processors to be used by Prime MM/GBSA.",
+        help="Number of processors to be used by Prime. Defaults to %(default)s.",
     )
     parser.set_defaults(cmd=command_ifd)
 
