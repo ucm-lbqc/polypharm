@@ -53,7 +53,9 @@ def parse_args(
     argv: List[str],
 ) -> Tuple[Callable[[Dict[str, Any]], None], Dict[str, Any]]:
     main_parser = argparse.ArgumentParser(
-        description="Run a stage of the structure-based polypharmacology workflow.",
+        description="""
+        Run a stage of the structure-based drug design workflow for polypharmacology.
+        """,
         prog="polypharm",
     )
     subparsers = main_parser.add_subparsers(required=True)
