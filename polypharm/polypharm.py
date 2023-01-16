@@ -223,7 +223,7 @@ def cross_dock(
     async_run(concurrent_subprocess(commands, tasks, quiet))
 
 
-def run_mmgbsa_cross(
+def rescore_docking(
     ifd_files: List[PathLike],
     workdir: PathLike = "mmgbsa",
     cpus: int = 1,

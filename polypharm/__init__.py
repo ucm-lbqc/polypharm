@@ -3,8 +3,8 @@ from .polypharm import (
     rank_poses,
     rank_molecules,
     report,
-    run_mmgbsa_cross,
     cross_dock,
+    rescore_docking,
 )
 
 __version__ = "0.2.0"

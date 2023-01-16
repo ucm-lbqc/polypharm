@@ -31,7 +31,7 @@ def command_report(args: Dict[str, Any]) -> None:
 
 def command_rescore(args: Dict[str, Any]) -> None:
     args["workdir"] = os.getcwd()
-    polypharm.run_mmgbsa_cross(**args)
+    polypharm.rescore_docking(**args)
 
 
 def expand_path(path: str, ext: List[str]) -> List[str]:
