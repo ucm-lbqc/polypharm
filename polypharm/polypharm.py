@@ -171,8 +171,8 @@ def run_ifd_cross(
     lig_files: List[PathLike],
     bs_residues: Dict[str, List[str]],
     workdir: PathLike = "ifd",
-    glide_cpus: int = 2,
-    prime_cpus: int = 2,
+    glide_cpus: int = 1,
+    prime_cpus: int = 1,
     tasks: int = 1,
     quiet: bool = False,
 ) -> None:
@@ -226,7 +226,7 @@ def run_ifd_cross(
 def run_mmgbsa_cross(
     ifd_files: List[PathLike],
     workdir: PathLike = "mmgbsa",
-    cpus: int = 2,
+    cpus: int = 1,
     tasks: int = 1,
     quiet: bool = False,
 ) -> None:
