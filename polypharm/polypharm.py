@@ -17,23 +17,14 @@ from .helpers import (
 
 
 class RankingCriterion(enum.Enum):
-    CONTACTS = 1
-    NORMALIZED_CONTACTS = 2
-    BINDING_ENERGY = 3
-    NORMALIZED_BINDING_ENERGY = 4
-    TOTAL_SCORE = 5
+    CONTACTS = "INT"
+    NORMALIZED_CONTACTS = "INT_NORM"
+    BINDING_ENERGY = "DGBIND"
+    NORMALIZED_BINDING_ENERGY = "DGBIND_NORM"
+    TOTAL_SCORE = "NORMT"
 
     def ascending(self) -> bool:
         return self == self.BINDING_ENERGY
-
-
-RANKING_COLUMN_MAP = {
-    RankingCriterion.CONTACTS: "INT",
-    RankingCriterion.NORMALIZED_CONTACTS: "INT_NORM",
-    RankingCriterion.BINDING_ENERGY: "DGBIND",
-    RankingCriterion.NORMALIZED_BINDING_ENERGY: "DGBIND_NORM",
-    RankingCriterion.TOTAL_SCORE: "NORMT",
-}
 
 
 def rank_poses(
@@ -59,7 +50,7 @@ def rank_poses(
         df["DGBIND_NORM"] = 1 - normalize(df["DGBIND"])
     df["NORMT"] = (df["INT_NORM"] + df["DGBIND_NORM"]) / 2
 
-    sort_fields = [RANKING_COLUMN_MAP[criterion] for criterion in criteria]
+    sort_fields = [criterion.value for criterion in criteria]
     ascending = [criterion.ascending() for criterion in criteria]
     if "PROTEIN" in df.columns:
         sort_fields = ["PROTEIN"] + sort_fields
