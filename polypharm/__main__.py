@@ -18,6 +18,7 @@ def command_report(args: Dict[str, Any]) -> None:
 
 
 def command_ifd(args: Dict[str, Any]) -> None:
+    args["workdir"] = os.getcwd()
     polypharm.run_ifd_cross(**args)
 
 
