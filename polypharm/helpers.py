@@ -18,10 +18,7 @@ TEMPLATE_ENV = jinja2.Environment(
 def get_schrodinger_path() -> str:
     path = os.getenv("SCHRODINGER_PATH")
     if not path:
-        print(
-            "error: Environment variable SCHRODINGER_PATH is not set", file=sys.stderr
-        )
-        sys.exit(1)
+        raise OSError("Environment variable SCHRODINGER_PATH is not set")
     if not os.path.exists(path):
         print("error: SCHRODINGER_PATH is invalid")
     return path
