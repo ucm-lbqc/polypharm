@@ -7,6 +7,7 @@ import sys
 from functools import partial
 from typing import Any, Callable, Dict, List, Tuple
 
+import pandas as pd
 import polypharm
 
 
@@ -20,6 +21,12 @@ def command_report(args: Dict[str, Any]) -> None:
 def command_dock(args: Dict[str, Any]) -> None:
     args["workdir"] = os.getcwd()
     polypharm.run_ifd_cross(**args)
+
+
+def command_rank(args: Dict[str, Any]) -> None:
+    df = pd.read_csv(args["csvfile"])
+    df = polypharm.rank_molecules(df, args["criteria"])
+    df.to_csv(args["output"], index=False)
 
 
 def command_rescore(args: Dict[str, Any]) -> None:
@@ -40,6 +47,16 @@ def expand_path(path: str, ext: List[str]) -> List[str]:
         raise ValueError(f"invalid file type: {path}")
     else:
         return [path]
+
+
+def parse_ranking_criteria(raw: str) -> List[polypharm.RankingCriterion]:
+    criteria: List[polypharm.RankingCriterion] = []
+    for token in raw.split(","):
+        value = getattr(polypharm.RankingCriterion, token.strip().upper(), None)
+        if not value:
+            raise ValueError(f"invalid sort criterion: {token}")
+        criteria.append(value)
+    return criteria
 
 
 def parse_residues(raw: str) -> Dict[str, List[str]]:
@@ -238,6 +255,42 @@ def parse_args(
         help="Number of processors to be used by Prime MM/GBSA.",
     )
     parser.set_defaults(cmd=command_rescore)
+
+    # Parser for ranking
+    parser = subparsers.add_parser(
+        "rank",
+        help="Rank molecules by the given criteria across the multiple receptors",
+    )
+    parser.add_argument(
+        "csvfile",
+        metavar="CSVFILE",
+        help="""
+        Comma-separated value file (*.csv) containing the output of the report command.
+        """,
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        dest="output",
+        metavar="CSVFILE",
+        required=True,
+        help="CSV file (*.csv) to write the ranked molecules to.",
+    )
+    parser.add_argument(
+        "-s",
+        "--sort-by",
+        dest="criteria",
+        metavar="SORT_LIST",
+        type=parse_ranking_criteria,
+        default="normalized_contacts,total_score",
+        help="""
+        Sort docking poses by the given criteria given as a comma-separated list.
+        Valid values are: contacts, normalized_contacts, binding_energy, 
+        normalized_binding_energy, total_score. Values are case-insensitive. Defaults to
+        '%(default)s'.
+        """,
+    )
+    parser.set_defaults(cmd=command_rank)
 
     args = main_parser.parse_args(argv)
     cmd: Callable[[Dict[str, Any]], None] = args.cmd
