@@ -13,7 +13,7 @@ import polypharm
 
 def command_dock(args: Dict[str, Any]) -> None:
     args["workdir"] = os.getcwd()
-    polypharm.run_ifd_cross(**args)
+    polypharm.cross_dock(**args)
 
 
 def command_rank(args: Dict[str, Any]) -> None:

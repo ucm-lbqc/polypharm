@@ -166,7 +166,7 @@ def report(
     return pd.concat(results).reset_index(drop=True)
 
 
-def run_ifd_cross(
+def cross_dock(
     prot_files: List[PathLike],
     lig_files: List[PathLike],
     bs_residues: Dict[str, List[str]],
