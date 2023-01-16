@@ -120,7 +120,7 @@ def rank_poses_cross(
 
 
 def report(
-    output_dir: PathLike,
+    maefiles: List[PathLike],
     bs_residues: Dict[str, List[str]],
     contact_cutoff: float,
     use_existing: bool = True,
@@ -128,7 +128,7 @@ def report(
     quiet: bool = False,
 ) -> pd.DataFrame:
     commands: List[Command] = []
-    for maefile in glob.glob(os.path.join(output_dir, "**", "*-out.maegz")):
+    for maefile in maefiles:
         path = Path(maefile)
         prot_name = Path(maefile).parent.name
         lig_name = path.stem.replace("-out", "")
