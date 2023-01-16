@@ -17,7 +17,7 @@ def command_report(args: Dict[str, Any]) -> None:
     df.to_csv(csvfile, index=False)
 
 
-def command_ifd(args: Dict[str, Any]) -> None:
+def command_dock(args: Dict[str, Any]) -> None:
     args["workdir"] = os.getcwd()
     polypharm.run_ifd_cross(**args)
 
@@ -133,8 +133,8 @@ def parse_args(
     )
     parser.set_defaults(cmd=command_report)
 
-    # Parser for ifd command
-    parser = subparsers.add_parser("ifd", help="Run induced-fit cross-docking")
+    # Parser for IFD
+    parser = subparsers.add_parser("dock", help="Run induced-fit cross-docking")
     parser.add_argument(
         "lig_files",
         metavar="LIGFILE_OR_DIR",
@@ -198,7 +198,7 @@ def parse_args(
         default=1,
         help="Number of processors to be used by Prime. Defaults to %(default)s.",
     )
-    parser.set_defaults(cmd=command_ifd)
+    parser.set_defaults(cmd=command_dock)
 
     args = main_parser.parse_args(argv)
     cmd: Callable[[Dict[str, Any]], None] = args.cmd
