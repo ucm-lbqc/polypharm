@@ -80,7 +80,7 @@ def rank_poses(
     return df
 
 
-def rank_poses_cross(
+def rank_molecules(
     results: pd.DataFrame,
     # FIXME: Use total score as default
     criteria: List[RankingCriterion] = [
