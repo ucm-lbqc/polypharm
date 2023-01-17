@@ -7,8 +7,9 @@ functionality of :py:mod:`polypharm`.
 Requirements
 ------------
 
-This package requires Python 3.9 or greater, so be sure to have a
-working installation.
+- [Python](https://python.org) 3.9 or later
+- [pandas](https://pandas.pydata.org/) 1.4.3 or later
+- [Jinja2](https://palletsprojects.com/p/jinja/) 3.1.2 or later
 
 .. warning::
 
