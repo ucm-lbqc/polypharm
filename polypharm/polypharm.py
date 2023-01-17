@@ -163,7 +163,7 @@ def rank_molecules(
         row_data["GLOBAL_RANK"] = rank_sum
         row_data["GLOBAL_NORMT"] = total_score_sum
         rows.append(row_data)
-    return pd.DataFrame(rows).sort_values("GLOBAL_NORMT", ascending=True)
+    return pd.DataFrame(rows).sort_values("GLOBAL_NORMT", ascending=False)
 
 
 def report(
