@@ -73,7 +73,7 @@ Licensed under the MIT license, see the separate LICENSE file.
 
 .. _cbsm: https://cbsm.utalca.cl/
 .. _fadasme: https://www.researchgate.net/profile/Francisco-Adasme
-.. _github: https://github.com/maurobedoya/polypharm
+.. _github: https://github.com/ucm-lbqc/polypharm
 .. _lbqc: https://lbqc.ucm.cl
 .. _mbedoya: https://www.researchgate.net/profile/Mauricio-Bedoya-2
 .. _wgonzalez: https://www.researchgate.net/profile/Wendy-Gonzalez-9

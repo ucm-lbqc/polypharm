@@ -47,7 +47,7 @@ Manual installation
 
 The source code including unreleased changes can be also directly
 download from the repository at `GitHub
-<https://github.com/maurobedoya/polypharm>`_.
+<https://github.com/ucm-lbqc/polypharm>`_.
 
 Uncompress the source code, change directory, and install it by:
 
