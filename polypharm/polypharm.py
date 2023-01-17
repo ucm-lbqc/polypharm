@@ -308,9 +308,9 @@ def cross_dock(
         Defaults to False.
 
     .. note::
-        Requires a Schrodinger working installation (2018-4 or greater)
-        including the Glide and Prime modules. The ``SCHRODINGER_PATH``
-        environment variable must be set.
+        Requires a Schrodinger Suite working installation (2018-4 or
+        greater) including the Glide and Prime modules. The
+        ``SCHRODINGER_PATH`` environment variable must be set.
 
     .. _Glide: https://schrodinger.com/products/glide
     .. _Prime: https://schrodinger.com/products/prime
@@ -402,8 +402,8 @@ def rescore_docking(
         Defaults to False.
 
     .. note::
-        Requires a Schrodinger working installation (2018-4 or greater)
-        including the Prime module. The ``SCHRODINGER_PATH``
+        Requires a Schrodinger Suite working installation (2018-4 or
+        greater) including the Prime module. The ``SCHRODINGER_PATH``
         environment variable must be set.
 
     .. [banks2005] Banks, J. L., Beard, H. S., Cao, Y., Cho, A. E.,

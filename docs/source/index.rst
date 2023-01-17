@@ -54,15 +54,15 @@ submit your inquiry via the issue tracker at the GitHub_ repository.
 Citing
 ------
 
-If you use :py:mod:`polypharm` in your scientific work, please support
-our work by adding a reference to the following article:
+If you use :py:mod:`polypharm` in your research, please consider citing
+the following article::
 
    To be added
 
 Contributors
 ------------
 
-- `Mauricio Bedoya <https://github.com/maurobedoya>`__ - creator,
+- `Mauricio Bedoya <https://github.com/maurobedoya>`_ - creator,
   maintainer
 - `Francisco Adasme <https://github.com/franciscoadasme>`_ - maintainer
 

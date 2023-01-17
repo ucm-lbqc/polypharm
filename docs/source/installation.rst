@@ -10,6 +10,12 @@ Requirements
 This package requires Python 3.9 or greater, so be sure to have a
 working installation.
 
+.. warning::
+
+    The main functionality (i.e., IFD and MM/GBSA) does require a
+    working `Schrödinger Suite <https://schrodinger.com>`_ installation
+    (2018-4 or greater) including the Glide and Prime modules.
+
 Installing using pip
 --------------------
 

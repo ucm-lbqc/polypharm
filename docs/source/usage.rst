@@ -165,9 +165,11 @@ Thus, all the steps can be run sequentially:
 
 .. code-block:: bash
 
+    $ vim resids.txt # write residues into a file
     $ mkdir ifd && cd ifd
-    $ python -m polypharm dock -p /path/to/proteins -r /path/to/resid -t 10 /path/to/ligands
-    $ mkdir ../mmgbsa && cd ,,/mmgbsa
+    $ python -m polypharm dock -p ../proteins -r ../resids.txt -t 10 ../ligands
+    $ cd ..
+    $ mkdir mmgbsa && cd mmgbsa
     $ python -m polypharm rescore -t 10 ../ifd
     $ cd ..
     $ python -m polypharm report -o report.csv -c 6 -t 10 mmgbsa
