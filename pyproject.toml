@@ -37,7 +37,8 @@ version = { attr = "polypharm.__version__" }
 dev = ["black", "isort", "sphinx", "sphinx-rtd-theme"]
 
 [project.urls]
-Homepage = "https://github.com/ucm-lbqc/polypharm"
+Homepage = "http://polypharm.rtfd.io/"
+Repository = "https://github.com/ucm-lbqc/polypharm"
 
 [project.scripts]
 polypharm = "polypharm.__main__:main"
