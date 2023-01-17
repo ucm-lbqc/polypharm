@@ -7,7 +7,7 @@ functionality of :py:mod:`polypharm`.
 Requirements
 ------------
 
-This package requires Python 3.7 or greater, so be sure to have a
+This package requires Python 3.9 or greater, so be sure to have a
 working installation.
 
 Installing using pip
