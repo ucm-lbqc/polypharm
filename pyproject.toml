@@ -19,11 +19,11 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 keywords = [
-    "computational chemistry",
+    "computational-chemistry",
     "polypharmacology",
-    "docking",
-    "induced fit",
-    "free energy",
+    "molecular-docking",
+    "induced-fit",
+    "free-energy-calculations",
 ]
 dynamic = ["version"]
 
