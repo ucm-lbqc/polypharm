@@ -2,7 +2,7 @@ Installation
 ============
 
 This page describes how to download, install and use the basic
-functionality of **polypharm**.
+functionality of :py:mod:`polypharm`.
 
 Requirements
 ------------

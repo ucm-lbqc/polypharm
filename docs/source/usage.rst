@@ -1,7 +1,7 @@
 Usage
 =====
 
-This page shows how to use **polypharm** both programmatically or from
+This page shows how to use :py:mod:`polypharm` both programmatically or from
 command line.
 
 From Python
@@ -125,7 +125,7 @@ Command line
 
 The same workflow can be run via command line as follows.
 
-First, let's try to execute the polypharm program:
+First, let's try to execute the ``polypharm`` program:
 
 .. code-block:: bash
 
