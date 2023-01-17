@@ -15,9 +15,10 @@ stable release that is relatively bug-free and can be installed via pip:
 pip install polypharm
 ```
 
-The minimum Python version is 3.7, and requires the pandas and Jinja2
-packages. Refer to the [Installation](http://polypharm.rtfd.io/) page of
-the documentation for more details.
+The minimum Python version is 3.9, and requires the pandas and Jinja2
+packages. Refer to the
+[Installation](http://polypharm.rtfd.io/en/latest/installation.html)
+page of the documentation for more details.
 
 **NOTE**: The main functionality (i.e., IFD and MM/GBSA) does require a
 working [Schrödinger Suite](https://schrodinger.com) installation (2018-4 or
