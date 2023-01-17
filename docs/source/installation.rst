@@ -7,9 +7,9 @@ functionality of :py:mod:`polypharm`.
 Requirements
 ------------
 
-- [Python](https://python.org) 3.9 or later
-- [pandas](https://pandas.pydata.org/) 1.4.3 or later
-- [Jinja2](https://palletsprojects.com/p/jinja/) 3.1.2 or later
+- `Python <https://python.org>`_ 3.9 or later
+- `pandas <https://pandas.pydata.org>`_ 1.4.3 or later
+- `Jinja2 <https://palletsprojects.com/p/jinja>`_ 3.1.2 or later
 
 .. warning::
 
