@@ -7,8 +7,8 @@ Welcome to polypharm's documentation!
 =====================================
 
 :py:mod:`polypharm` is an open source library written in Python to
-perform IFD and MM/GBSA calculations on different targets using a
-polypharmacological approach.
+perform induced fit docking (IFD) and MM/GBSA calculations on different
+targets using a polypharmacological approach.
 
 About
 -----
