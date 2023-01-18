@@ -166,7 +166,7 @@ def rank_molecules(
         rows.append(row_data)
     return (
         pd.DataFrame(rows)
-        .sort_values("GLOBAL_NORMT", ascending=False)
+        .sort_values("GLOBAL_RANK", ascending=True)
         .reset_index(drop=True)
     )
 
