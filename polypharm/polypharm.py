@@ -164,11 +164,14 @@ def rank_molecules(
         row_data["GLOBAL_RANK"] = rank_sum
         row_data["GLOBAL_NORMT"] = total_score_sum
         rows.append(row_data)
-    return (
+    results = (
         pd.DataFrame(rows)
         .sort_values("GLOBAL_RANK", ascending=True)
         .reset_index(drop=True)
     )
+    sorted_columns = sorted(results.columns[1:-3], key=lambda x: (x.split("_")[-1], x))
+    sorted_columns = ["NAME"] + sorted_columns + ["GLOBAL_RANK", "GLOBAL_NORMT"]
+    return results[sorted_columns]
 
 
 def report(
