@@ -169,6 +169,8 @@ def rank_molecules(
         .sort_values("GLOBAL_RANK", ascending=True)
         .reset_index(drop=True)
     )
+    results.index +=1
+    results.index.name = "POSITION"
     sorted_columns = sorted(results.columns[1:-3], key=lambda x: (x.split("_")[-1], x))
     sorted_columns = ["NAME"] + sorted_columns + ["GLOBAL_RANK", "GLOBAL_NORMT"]
     return results[sorted_columns]
