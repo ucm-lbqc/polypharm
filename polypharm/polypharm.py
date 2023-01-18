@@ -153,6 +153,7 @@ def rank_molecules(
         # TODO: test other poses besides top-ranked per protein
         for row in [sub_df.iloc[0] for _, sub_df in df.groupby("PROTEIN")]:
             prot = row["PROTEIN"]
+            row_data[f"{prot}_INDEX"] = row["INDEX"]
             row_data[f"{prot}_INT"] = row["INT"]
             row_data[f"{prot}_DGBIND"] = row["DGBIND"]
             row_data[f"{prot}_NORMT"] = row["NORMT"]
