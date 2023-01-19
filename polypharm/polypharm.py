@@ -434,7 +434,7 @@ def rescore_docking(
     commands: List[Command] = []
     for ifd_file in map(Path, ifd_files):
         ifd_file = ifd_file.absolute()
-        prot_name = ifd_file.parent.parts[-1]
+        prot_name = ifd_file.parent.parts[-2]
         prot_workdir = Path(workdir, prot_name)
 
         lig_name = ifd_file.stem.replace("-out", "")
