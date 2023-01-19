@@ -352,7 +352,7 @@ def cross_dock(
                 inp_file,
                 protfile=os.path.join("..", prot_file.name),
                 ligfile=lig_file.name,
-                resids=",".join(bs_residues[prot_file.name]),
+                resids=",".join(bs_residues[prot_name]),
             )
 
             args = [
