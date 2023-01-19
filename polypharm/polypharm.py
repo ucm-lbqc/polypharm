@@ -438,7 +438,7 @@ def rescore_docking(
         prot_workdir = Path(workdir, prot_name)
 
         lig_name = ifd_file.stem.replace("-out", "")
-        jobid = f"mmgbsa/{prot_name}/{lig_name}"
+        jobid = f"{workdir.name}/{prot_name}/{lig_name}"
 
         if os.path.exists(prot_workdir / f"{lig_name}-out.maegz"):
             print(f"Skipping {jobid}... already exists")
