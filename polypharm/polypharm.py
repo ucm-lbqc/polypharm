@@ -346,7 +346,7 @@ def cross_dock(
                 lig_workdir.mkdir()
             shutil.copy(lig_file, lig_workdir)
 
-            inp_file = f"{lig_file.stem}.inp"
+            inp_file = f"{lig_workdir}/{lig_file.stem}.inp"
             render_template_to_file(
                 "ifd.inp",
                 inp_file,
