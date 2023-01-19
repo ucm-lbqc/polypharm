@@ -362,6 +362,7 @@ def cross_dock(
                 str(glide_cpus),
                 "-NPRIMECPU",
                 str(prime_cpus),
+                "-REMOVE_WORKDIR",
                 "-HOST",
                 "localhost",
                 "-SUBHOST",
