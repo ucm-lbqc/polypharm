@@ -11,7 +11,7 @@ PathLike = Union[str, Path]
 
 ROOT_DIR = Path(__file__).parent.parent
 TEMPLATE_ENV = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(ROOT_DIR / "templates")
+    loader=jinja2.FileSystemLoader(ROOT_DIR / "polypharm" / "templates")
 )
 
 
