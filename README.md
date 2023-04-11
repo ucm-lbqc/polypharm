@@ -1,6 +1,6 @@
 # Polypharm
 
-A Python-based library to perform induced fit docking (IFD) and MM/GBSA
+[<img align="left" src="./polypharm/assets/polypharm_logo_transparent_001.png" width="250" />](./polypharm/assets/polypharm_logo_transparent_001.png) A Python-based library to perform induced fit docking (IFD) and MM/GBSA
 calculations on different targets using a polypharmacological approach.
 
 Refer to the [official documentation](http://polypharm.rtfd.io/) for
