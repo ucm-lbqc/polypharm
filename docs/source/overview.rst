@@ -39,46 +39,46 @@ Cross docking
     protonation states to the desired pH. Verify that everything is 
     correct in the initial .mae and .maegz files.
 
-    An example of the initial setup using a Jupyter notebook can be 
-    found here:
-    `usage.ipynb <https://github.com/ucm-lbqc/polypharm/blob/main/examples/usage.ipynb>`_
+An example of the initial setup using a Jupyter notebook can be 
+found here:
+`usage.ipynb <https://github.com/ucm-lbqc/polypharm/blob/main/examples/usage.ipynb>`_
     
-    First, import the libraries, including the Polypharm library, and 
-    set the environment variable for the Schrodinger suite. The names 
-    of the input and output folders have to be specified. The "LIGAND_DIR" 
-    folder must contain all the ligands to be tested (in mae or maegz format) 
-    and the "PROTEIN_DIR" folder all the proteins to be studied 
-    (in mae or maegz format). If more than one binding site has to be 
-    specified for the same protein, the file must be duplicated and renamed 
-    to identify the results. This name must be specified in the form:
+First, import the libraries, including the Polypharm library, and 
+set the environment variable for the Schrodinger suite. The names 
+of the input and output folders have to be specified. The "LIGAND_DIR" 
+folder must contain all the ligands to be tested (in mae or maegz format) 
+and the "PROTEIN_DIR" folder all the proteins to be studied 
+(in mae or maegz format). If more than one binding site has to be 
+specified for the same protein, the file must be duplicated and renamed 
+to identify the results. This name must be specified in the form:
     
-    .. code-block:: python
+.. code-block:: python
 
-        raw_residues = {"proteinA_siteA": "A:436,A:439,A:440",
-                        "proteinA_siteB": "E:400,E:401,E:402"}
-    Note that it is possible to use any name with alphanumeric characters, but we 
-    suggest using simple and short names for the ligands, e.g. 1a, 1b, 1c, ... etc.    
+    raw_residues = {"proteinA_siteA": "A:436,A:439,A:440",
+                    "proteinA_siteB": "E:400,E:401,E:402"}
+Note that it is possible to use any name with alphanumeric characters, but we 
+suggest using simple and short names for the ligands, e.g. 1a, 1b, 1c, ... etc.    
 
-    Then the number of core processes to be used in each calculation and the number 
-    of concurrent processes to be run must be specified. In the following code:
+Then the number of core processes to be used in each calculation and the number 
+of concurrent processes to be run must be specified. In the following code:
 
-    .. code-block:: python
+.. code-block:: python
 
-        ppm.cross_dock(
-            prot_files=prot_files,
-            lig_files=lig_files,
-            bs_residues=BS_RESIDS,
-            workdir=IFD_DIR,
-            glide_cpus=2,
-            prime_cpus=2,
-            tasks=10,
-        )
+    ppm.cross_dock(
+        prot_files=prot_files,
+        lig_files=lig_files,
+        bs_residues=BS_RESIDS,
+        workdir=IFD_DIR,
+        glide_cpus=2,
+        prime_cpus=2,
+        tasks=10,
+    )
 
-    The Glide and Prime stages use two processors and run 10 calculations
-    simultaneously, so 20 processor threads are required. In this procedure, 
-    cross-docking is performed, i.e. docking with the IFD protocol of each ligand 
-    in each protein and defined binding site and a maximum of 10 poses are generated 
-    for each ligand in each defined site.
+The Glide and Prime stages use two processors and run 10 calculations
+simultaneously, so 20 processor threads are required. In this procedure, 
+cross-docking is performed, i.e. docking with the IFD protocol of each ligand 
+in each protein and defined binding site and a maximum of 10 poses are generated 
+for each ligand in each defined site.
 
 .. _rescore:
 
